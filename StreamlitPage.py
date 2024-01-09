@@ -75,6 +75,7 @@ def create_plots(input_game_name, num_reviews):
 
     # GENERATE THE DATAFRAME THAT WILL BE USEFUL DOWN THE LINE
     review_author_id = []
+    number_of_reviews = []
     review_recommendation = []  # 0 IS NOT RECOMMENDED, 1 IS RECOMMENDED
     review_playtime = []
     post_review_playtime = []
@@ -82,6 +83,7 @@ def create_plots(input_game_name, num_reviews):
     review_text = []
     for review in reviews:
         review_author_id.append(review['reviewAuthorSteamID'])
+        number_of_reviews.append(review['numberOfReviews'])
         if review['reviewPositive']:
             review_recommendation.append("Yes")
         else:
@@ -94,6 +96,7 @@ def create_plots(input_game_name, num_reviews):
         review_text.append(review['reviewText'])
 
     review_data = {"AuthorID": review_author_id,
+                   "num_reviews": number_of_reviews,
                    "recommended": review_recommendation,
                    "review_playtime": review_recommendation,
                    "continued_playtime": post_review_playtime,
@@ -103,15 +106,27 @@ def create_plots(input_game_name, num_reviews):
 
     # CREATE THE PIECHART
     pie_chart = px.pie(review_dataframe, names='recommended', color='recommended',
+                       title="Percent of reviews recommending", hover_data='recommended',
                        color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
-    pie_chart.update_layout(hovermode="x")
+    pie_chart.update_traces(hovertemplate=None)
+
+    # PIE CHART OF THE NUMBER OF REVIEWS THAT AUTHORS LEFT
+    bins = [0, 10, 50, 200, float('inf')]
+    labels = ['0-10', '11-50', '51-200', '>200']
+    review_dataframe['binned'] = pd.DataFrame(
+        pd.cut(review_dataframe['num_reviews'], bins=bins, labels=labels, include_lowest=True, right=False))
+    number_of_reviews = px.pie(review_dataframe, names='binned', color='binned', labels=labels,
+                               title="Number of Reviews from Reviewers", hover_data='binned')
+    number_of_reviews.update_traces(hovertemplate=None)
 
     # SURVIVOR ANALYSIS REVIEWS
     average_survival = px.box(review_dataframe, y="recommended", x="total_playtime", color='recommended',
+                              title="Playtime at review",
                               color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
 
     # SURVIVOR ANALYSIS POST REVIEWS
     post_completion_survival = px.box(review_dataframe, y="recommended", x="continued_playtime", color='recommended',
+                                      title="Playtime post review",
                                       color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
 
     # MOVING AVERAGE TREND ANALYSIS
@@ -121,6 +136,7 @@ def create_plots(input_game_name, num_reviews):
     positive_over_time['Time_Bin'] = pd.cut(positive_over_time['total_playtime'], bins, right=False)
 
     # WE FIND JUST THE NUMBER OF POSITIVE REVIEWS AND AGGREGATE INTO NEW COLUMNS THEM BASED ON SUM POS AND TOTAL COUNT
+    # LOG ODDS TO MINIMIZE THE VARIANCE
     positive_over_time['Positive_Review'] = review_dataframe["recommended"] == "Yes"
     grouped = positive_over_time.groupby('Time_Bin')['Positive_Review'].agg(
         [('Positive_Count', 'sum'), ('Total_Count', 'count')])
@@ -130,7 +146,8 @@ def create_plots(input_game_name, num_reviews):
     window_size = 4  # Adjust the window size as needed
     grouped['MA_Positive_Percentage'] = grouped['Positive_Percentage'].rolling(window=window_size, min_periods=1).mean()
 
-    line_chance_over_time = px.line(x=grouped.index.astype(str), y=grouped['MA_Positive_Percentage'])
+    line_chance_over_time = px.line(x=grouped.index.astype(str), y=grouped['MA_Positive_Percentage'],
+                                    title="Recommendation odds over playtime")
     line_chance_over_time.update_traces(hovertemplate='Percent: %{y:.2f}%')
     line_chance_over_time.update_yaxes(ticksuffix="%")
 
@@ -182,7 +199,11 @@ def create_plots(input_game_name, num_reviews):
 
         user_owned_games = requests.get(
             f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_key}&steamid={review_dataframe['AuthorID'][index]}&format=json")
-        loaded_user_games = json.loads(user_owned_games.content)
+        try:
+            loaded_user_games = json.loads(user_owned_games.content)
+        except Exception as e:
+            private_profiles = private_profiles + 1
+            continue
         if len(loaded_user_games["response"]) <= 0:
             private_profiles = private_profiles + 1
             continue
@@ -239,7 +260,7 @@ def create_plots(input_game_name, num_reviews):
     # "averageNegativePlaytime"
     game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
 
-    return game_info, pie_chart, pie_chart, average_survival, post_completion_survival, line_chance_over_time, nmf_topic_analysis, all_review_network, positive_review_network, negative_review_network
+    return game_info, pie_chart, number_of_reviews, average_survival, post_completion_survival, line_chance_over_time, nmf_topic_analysis, all_review_network, positive_review_network, negative_review_network
 
 
 # Streamlit app layout and components
@@ -331,3 +352,6 @@ if button_clicked:
 
 # # EXAMPLE COMPONENTS
 # st.warning('This is a warning', icon="⚠️")
+
+
+# MOST PAIRWISE CONNECTIONS AND THEN RECOMMEND GAMES BASED ON THAT
