@@ -87,12 +87,14 @@ def get_Reviews(appid=1091500, reviewType="all", reviewNum=300):
             reviewPlaytimeAtReview = reviewAuthor["playtime_at_review"]
             reviewPlaytimeLastTwoWeeks = reviewAuthor["playtime_last_two_weeks"]
             reviewLastPlayed = reviewAuthor["last_played"]
+            numberOfReviews = reviewAuthor["num_reviews"]
             reviewDict = {"reviewText": reviewText, "reviewPositive": reviewPositive, "reviewEdited": reviewEdited,
                           "reviewRecommendationID": reviewRecommendationID, "reviewAuthorSteamID": reviewAuthorSteamID,
                           "reviewPlaytimeForever": reviewPlaytimeForever,
                           "reviewPlaytimeAtReview": reviewPlaytimeAtReview,
                           "reviewPlaytimeLastTwoWeeks": reviewPlaytimeLastTwoWeeks,
-                          "reviewLastPlayed": reviewLastPlayed}
+                          "reviewLastPlayed": reviewLastPlayed,
+                          "numberOfReviews": numberOfReviews}
             reviews.append(reviewDict)
 
     return reviews
