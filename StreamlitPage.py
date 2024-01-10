@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 import traceback
 import time
 
+# TEXT PROCESSING
+from thefuzz import fuzz, process
+
 # DATA SCIENCE
 import pandas as pd
 import numpy as np
@@ -54,19 +57,32 @@ def create_plots(input_game_name, num_reviews):
     with open('game_id.pkl', 'rb') as fp:
         app_id_dict = pickle.load(fp)
         try:
-            # TODO FUZZY STRING MATCHING
-            # LOOK FOR THE "PERFECT FIT" GAME
-            if input_game_name in app_id_dict.keys():
-                app_id_list.append(app_id_dict[input_game_name])
-            # NO PERFECT FIT GAME
-            else:
-                app_id_list = [game_id for key, game_id in app_id_dict.items() if input_game_name in key]
-        except KeyError as error:
-            print("Error with finding the game name")
+            # FUZZY STRING MATCHING USING THEFUZZ
+            match_ratios = process.extract(input_game_name, app_id_dict.keys(), scorer=fuzz.ratio)
+            app_id_list.append(app_id_dict[match_ratios[0][0]])
+
+            # # OLD METHOD:
+            # # LOOK FOR THE "PERFECT FIT" GAME
+            # if input_game_name in app_id_dict.keys():
+            #     app_id_list.append(app_id_dict[input_game_name])
+            # # NO PERFECT FIT GAME
+            # else:
+            #     app_id_list = [game_id for key, game_id in app_id_dict.items() if input_game_name in key]
+        except Exception as error:
+            st.warning("Error with finding the game name. Please check spelling and try again.", icon="⚠️")
 
     app_id = app_id_list[0] if len(app_id_list) > 0 else 0
+    print(app_id)
 
-    reviews = get_Reviews(appid=app_id, reviewNum=num_reviews)
+    reviews = dict()
+    try:
+        reviews = get_Reviews(appid=app_id, reviewNum=num_reviews)
+    except Exception as error:
+        st.warning("Fatal error during API query. Please try again.", icon="⚠️")
+        print(error)
+        print(traceback.print_exc())
+        return
+
     game_info = reviews.pop(0)
 
     # GENERATE THE DATAFRAME THAT WILL BE USEFUL DOWN THE LINE
@@ -100,10 +116,10 @@ def create_plots(input_game_name, num_reviews):
                    "text": review_text}
     review_dataframe = pd.DataFrame(review_data)
 
-    # CREATE THE PIECHART
+    # PIE CHART FOR SIMPLE PERCENT RECOMMENDED OPTIONS
     pie_chart = px.pie(review_dataframe, names='recommended', color='recommended',
                        title="Percent of reviews recommending", hover_data='recommended',
-                       color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
+                       color_discrete_map={"Yes": '#2B66C2', "No": '#EB4339'})
     pie_chart.update_traces(hovertemplate=None)
 
     # PIE CHART OF THE NUMBER OF REVIEWS THAT AUTHORS LEFT
@@ -111,6 +127,15 @@ def create_plots(input_game_name, num_reviews):
     labels = ['0-10 Inexperienced Reviewer', '11-50 Experienced Reviewer', '51-200 Pro-Reviewer', '>200 Review Mogul']
     review_dataframe['binned'] = pd.DataFrame(
         pd.cut(review_dataframe['num_reviews'], bins=bins, labels=labels, include_lowest=True, right=False))
+    # # THEORETICAL SUNBURST DIAGRAM, INNER CIRCLE IS TOO SMALL + LEGEND IS MISSING
+    # number_of_reviews = px.sunburst(review_dataframe, path=['binned', 'recommended'],
+    #                                 values=[1 for x in review_dataframe.index],
+    #                                 color='binned',
+    #                                 names='binned',
+    #                                 labels=labels,
+    #                                 title="Experience of Reviewers",
+    #                                 hover_data=['binned'],
+    #                                 branchvalues='total')
     number_of_reviews = px.pie(review_dataframe, names='binned', color='binned', labels=labels,
                                title="Experience of Reviewers", hover_data='binned')
     number_of_reviews.update_traces(hovertemplate=None)
@@ -186,6 +211,8 @@ def create_plots(input_game_name, num_reviews):
 
     nmf_topic_analysis.update_layout(showlegend=False, height=600)
     nmf_topic_analysis.update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
+
+    # TODO: MORE TEXT PLOTTED AGAINST PERCENT TO RECOMMEND
 
     start_time = time.time()
     print(f"Processing begins at: {start_time}")
@@ -280,12 +307,13 @@ st.set_page_config(page_title="Steam Sense", page_icon='./assets/SteamSense128.i
 st.title("Steam Sense: Steam Review Analytics Done Right")
 st.markdown("By Tal Ashkenazi - [Github](https://github.com/tal-ashkenazi01)")
 with st.container():
-    col1, col2 = st.columns([0.8, 0.2])
+    col1, col2 = st.columns([0.7, 0.3])
     with col1:
         user_input = st.text_input("$$\Large \\text{Enter the name of the steam game: }$$", value="Lunacid")
     with col2:
-        num_reviews = st.number_input('$$\Large \\text{Number of reviews to query: }$$', min_value=50, format="%d",
-                                      step=1, placeholder=50)
+        num_reviews = st.number_input('$$\Large \\text{Select Number of Reviews: }$$', min_value=50, format="%d",
+                                      step=1, placeholder=50,
+                                      help="Going above 5000 reviews not recommended and will lead to long wait times")
 button_clicked = st.button('Analyze')
 
 # Callback for button click
@@ -332,7 +360,7 @@ if button_clicked:
                 st.plotly_chart(post_completion_survival)
                 st.subheader("How Many Hours Were Played Post-Review?")
                 st.markdown("Explanation")
-        with st.container(border=True):
+        with st.container():
             st.header("Likelihood of Recommending Game Over Playtime")
             col1, col2 = st.columns(2)
             with col1:

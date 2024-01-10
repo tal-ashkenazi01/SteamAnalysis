@@ -78,3 +78,5 @@ urllib3==2.1.0
 validators==0.22.0
 wcwidth==0.2.13
 zipp==3.17.0
+
+thefuzz~=0.20.0
