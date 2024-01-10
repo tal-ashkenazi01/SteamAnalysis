@@ -11,17 +11,11 @@ from dotenv import load_dotenv
 import traceback
 import time
 
-load_dotenv()
-
 # DATA SCIENCE
 import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import PCA, NMF
-from sklearn.manifold import TSNE
-import networkx as nx
-from itertools import combinations
-from collections import defaultdict
+from sklearn.decomposition import NMF
 
 # GRAPH LIBRARIES
 import plotly.graph_objects as go
@@ -34,6 +28,7 @@ from utils.MakeNetwork import make_network
 
 # NOTE THAT STEAM RETURNS PLAYTIME IN MINUTES
 # https://partner.steamgames.com/doc/store/getreviews
+load_dotenv()
 steam_key = os.getenv('STEAM_KEY')
 
 # SET UP THE PICKLE FILE FOR FUTURE READING
@@ -59,6 +54,7 @@ def create_plots(input_game_name, num_reviews):
     with open('game_id.pkl', 'rb') as fp:
         app_id_dict = pickle.load(fp)
         try:
+            # TODO FUZZY STRING MATCHING
             # LOOK FOR THE "PERFECT FIT" GAME
             if input_game_name in app_id_dict.keys():
                 app_id_list.append(app_id_dict[input_game_name])
@@ -132,11 +128,15 @@ def create_plots(input_game_name, num_reviews):
     # MOVING AVERAGE TREND ANALYSIS
     positive_over_time = review_dataframe
     # WE CREATE BINS WITH THE NP ARRANGE, WITH EACH BIN CONTAINING 500 MINUTES
-    bins = np.arange(0, positive_over_time['total_playtime'].max() + 10, 10)  # Adjust the 100 to change the bin size
+    largest_time_spent = positive_over_time['total_playtime'].max()
+    if largest_time_spent > 500:
+        largest_time_spent = 500
+
+    bins = np.arange(0, largest_time_spent + 50, 50)
     positive_over_time['Time_Bin'] = pd.cut(positive_over_time['total_playtime'], bins, right=False)
 
     # WE FIND JUST THE NUMBER OF POSITIVE REVIEWS AND AGGREGATE INTO NEW COLUMNS THEM BASED ON SUM POS AND TOTAL COUNT
-    # LOG ODDS TO MINIMIZE THE VARIANCE
+    # TODO LOG ODDS TO MINIMIZE THE VARIANCE
     positive_over_time['Positive_Review'] = review_dataframe["recommended"] == "Yes"
     grouped = positive_over_time.groupby('Time_Bin')['Positive_Review'].agg(
         [('Positive_Count', 'sum'), ('Total_Count', 'count')])
@@ -247,14 +247,8 @@ def create_plots(input_game_name, num_reviews):
 
     # # QUICK STAT FORMATS
     game_info["game_name"] = id_app_dict[app_id]
-    # "reviewScoreDesc":"Very Positive"
-    # "totalPositive":4119
-    # "totalNegative":394
-    # "totalReviews":4513
-    # "averagePlaytimeFromReviews"
     game_info['averagePlaytimeFromReviews'] = review_dataframe['total_playtime'].mean()
     averaging_df = review_dataframe.groupby("recommended")
-
     # "averagePositivePlaytime"
     game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
     # "averageNegativePlaytime"
@@ -269,13 +263,33 @@ def create_plots(input_game_name, num_reviews):
 st.set_page_config(layout='wide')
 
 # COMPONENTS
-st.title('Steam Game analysis')
+# HEADER AND TITLE
+# st.image('./assets/SteamSense128.png')
+
+# markdown_html = """
+# <style>
+# .bottom-aligned-header {
+#     display: flex;
+#     height: 200px;  /* Adjust height as needed */
+#     align-items: end;
+#     justify-content: center;
+# }
+# </style>
+#
+# <div class="bottom-aligned-header">
+#     <h1 style="vertical-align:bottom">Title</h1>
+# </div>
+# """
+# st.markdown(markdown_html, unsafe_allow_html=True)
+
+st.title("GameSense: Steam Review Analytics Done Right")
+st.markdown("By Tal Ashkenazi")
 with st.container():
     col1, col2 = st.columns([0.8, 0.2])
     with col1:
-        user_input = st.text_input('Enter the name of a steam game:')
+        user_input = st.text_input("$$\Large \\text{Enter the name of the steam game: }$$", placeholder="Lunacid")
     with col2:
-        num_reviews = st.number_input('Enter a number', min_value=50, format="%d", step=1, placeholder=50)
+        num_reviews = st.number_input('$$\Large \\text{Number of reviews to query: }$$', min_value=50, format="%d", step=1, placeholder=50)
 button_clicked = st.button('Analyze')
 
 # Callback for button click
