@@ -119,11 +119,14 @@ def create_plots(input_game_name, num_reviews):
     average_survival = px.box(review_dataframe, y="recommended", x="total_playtime", color='recommended',
                               title="Playtime at review",
                               color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
+    average_survival.update_xaxes(title="Playtime at time of review (hours)")
 
     # SURVIVOR ANALYSIS POST REVIEWS
     post_completion_survival = px.box(review_dataframe, y="recommended", x="continued_playtime", color='recommended',
                                       title="Playtime post review",
                                       color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
+    post_completion_survival.update_xaxes(title="Playtime post review (hours)")
+
 
     # MOVING AVERAGE TREND ANALYSIS
     positive_over_time = review_dataframe
@@ -149,7 +152,8 @@ def create_plots(input_game_name, num_reviews):
     line_chance_over_time = px.line(x=grouped.index.astype(str), y=grouped['MA_Positive_Percentage'],
                                     title="Recommendation odds over playtime")
     line_chance_over_time.update_traces(hovertemplate='Percent: %{y:.2f}%')
-    line_chance_over_time.update_yaxes(ticksuffix="%")
+    line_chance_over_time.update_xaxes(title="Total Playtime (hours)")
+    line_chance_over_time.update_yaxes(title="Percent recommended", ticksuffix="%")
 
     # TOPIC ANALYSIS
     vectorizer = TfidfVectorizer(stop_words='english', max_df=.97, min_df=.025)
@@ -264,30 +268,12 @@ st.set_page_config(layout='wide')
 
 # COMPONENTS
 # HEADER AND TITLE
-# st.image('./assets/SteamSense128.png')
-
-# markdown_html = """
-# <style>
-# .bottom-aligned-header {
-#     display: flex;
-#     height: 200px;  /* Adjust height as needed */
-#     align-items: end;
-#     justify-content: center;
-# }
-# </style>
-#
-# <div class="bottom-aligned-header">
-#     <h1 style="vertical-align:bottom">Title</h1>
-# </div>
-# """
-# st.markdown(markdown_html, unsafe_allow_html=True)
-
 st.title("GameSense: Steam Review Analytics Done Right")
 st.markdown("By Tal Ashkenazi")
 with st.container():
     col1, col2 = st.columns([0.8, 0.2])
     with col1:
-        user_input = st.text_input("$$\Large \\text{Enter the name of the steam game: }$$", placeholder="Lunacid")
+        user_input = st.text_input("$$\Large \\text{Enter the name of the steam game: }$$", value="Lunacid")
     with col2:
         num_reviews = st.number_input('$$\Large \\text{Number of reviews to query: }$$', min_value=50, format="%d", step=1, placeholder=50)
 button_clicked = st.button('Analyze')
@@ -332,14 +318,14 @@ if button_clicked:
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(average_survival)
-                st.subheader("Example text")
+                st.subheader("How Many Hours Did Reviewers Play?")
                 st.markdown("Explanation")
             with col2:
                 st.plotly_chart(post_completion_survival)
-                st.subheader("Example text")
+                st.subheader("How Many Hours Were Played Post-Review?")
                 st.markdown("Explanation")
         with st.container(border=True):
-            st.header("Playtime after review")
+            st.header("Likelihood of Recommending Game Over Playtime")
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("**Example text**")
@@ -353,14 +339,16 @@ if button_clicked:
             with col2:
                 st.markdown("**Example text**")
         st.header("User similarity analysis")
+        st.markdown("**explanation goes here**")
+        st.markdown(f":red[Excluded {quick_stats['private_profiles']} private profiles from data]")
         tab1, tab2, tab3 = st.tabs(["All", "Positive", "Negative"])
+        # TODO EACH GAME AS A PERCENT OF THE TOP GAMES OF PLAYERS
         with tab1:
             st.plotly_chart(all_network, use_container_width=True)
         with tab2:
             st.plotly_chart(positive_net, use_container_width=True)
         with tab3:
             st.plotly_chart(negative_net, use_container_width=True)
-        st.markdown(f"Excluded {quick_stats['private_profiles']} private profiles from data")
     except Exception as e:
         st.warning('Something went wrong, please try again', icon="⚠️")
         loading_placeholder.empty()
