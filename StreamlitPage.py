@@ -268,7 +268,7 @@ st.set_page_config(page_title="Steam Sense", page_icon='./assets/SteamSense128.i
 
 # COMPONENTS
 # HEADER AND TITLE
-st.title("GameSense: Steam Review Analytics Done Right")
+st.title("Steam Sense: Steam Review Analytics Done Right")
 st.markdown("By Tal Ashkenazi")
 with st.container():
     col1, col2 = st.columns([0.8, 0.2])
