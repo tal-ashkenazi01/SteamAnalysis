@@ -264,7 +264,7 @@ def create_plots(input_game_name, num_reviews):
 
 # Streamlit app layout and components
 # LAYOUT
-st.set_page_config(layout='wide')
+st.set_page_config(page_title="Steam Sense", page_icon='./assets/SteamSense128.ico', layout='wide')
 
 # COMPONENTS
 # HEADER AND TITLE
