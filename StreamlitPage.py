@@ -61,18 +61,10 @@ def create_plots(input_game_name, num_reviews):
             match_ratios = process.extract(input_game_name, app_id_dict.keys(), scorer=fuzz.ratio)
             app_id_list.append(app_id_dict[match_ratios[0][0]])
 
-            # # OLD METHOD:
-            # # LOOK FOR THE "PERFECT FIT" GAME
-            # if input_game_name in app_id_dict.keys():
-            #     app_id_list.append(app_id_dict[input_game_name])
-            # # NO PERFECT FIT GAME
-            # else:
-            #     app_id_list = [game_id for key, game_id in app_id_dict.items() if input_game_name in key]
         except Exception as error:
             st.warning("Error with finding the game name. Please check spelling and try again.", icon="⚠️")
 
     app_id = app_id_list[0] if len(app_id_list) > 0 else 0
-    print(app_id)
 
     reviews = dict()
     try:
