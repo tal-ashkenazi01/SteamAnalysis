@@ -112,11 +112,11 @@ def create_plots(input_game_name, num_reviews):
 
     # PIE CHART OF THE NUMBER OF REVIEWS THAT AUTHORS LEFT
     bins = [0, 10, 50, 200, float('inf')]
-    labels = ['0-10', '11-50', '51-200', '>200']
+    labels = ['0-10 Inexperienced Reviewer', '11-50 Experienced Reviewer', '51-200 Pro-Reviewer', '>200 Review Mogul']
     review_dataframe['binned'] = pd.DataFrame(
         pd.cut(review_dataframe['num_reviews'], bins=bins, labels=labels, include_lowest=True, right=False))
     number_of_reviews = px.pie(review_dataframe, names='binned', color='binned', labels=labels,
-                               title="Number of Reviews from Reviewers", hover_data='binned')
+                               title="Experience of Reviewers", hover_data='binned')
     number_of_reviews.update_traces(hovertemplate=None)
 
     # SURVIVOR ANALYSIS REVIEWS
@@ -259,6 +259,7 @@ def create_plots(input_game_name, num_reviews):
     game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
     # "averageNegativePlaytime"
     game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
+    game_info['private_profiles'] = private_profiles
 
     return game_info, pie_chart, number_of_reviews, average_survival, post_completion_survival, line_chance_over_time, nmf_topic_analysis, all_review_network, positive_review_network, negative_review_network
 
@@ -345,6 +346,7 @@ if button_clicked:
             st.plotly_chart(positive_net, use_container_width=True)
         with tab3:
             st.plotly_chart(negative_net, use_container_width=True)
+        st.markdown(f"Excluded {quick_stats['private_profiles']} private profiles from data")
     except Exception as e:
         st.warning('Something went wrong, please try again', icon="⚠️")
         loading_placeholder.empty()
