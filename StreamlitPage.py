@@ -358,7 +358,47 @@ if button_clicked:
             with col1:
                 st.markdown("**Example text**")
             with col2:
-                st.plotly_chart(general_trend, use_container_width=True)
+                st.markdown("$$\large \\text{Compare recommendations over playtime to large titles: }$$")
+                trend1, trend2, trend3, trend4, trend5, trend6, trend7, trend8 = st.tabs(
+                    [quick_stats['game_name'], "Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky",
+                     "Terraria", "NBA 2K24", "Apex Legends"])
+                with trend1:
+                    st.plotly_chart(general_trend, use_container_width=True)
+                with trend2:
+                    with open('./assets/EldenRingExample.json', 'r') as file:
+                        Elden_Ring_chart_data = json.load(file)
+                    ER_fig = go.Figure(data=Elden_Ring_chart_data['data'], layout=Elden_Ring_chart_data['layout'])
+                    st.plotly_chart(ER_fig, use_container_width=True)
+                with trend3:
+                    with open('./assets/CS2Example.json', 'r') as file:
+                        CS2_chart_data = json.load(file)
+                    CS2_fig = go.Figure(data=CS2_chart_data['data'], layout=CS2_chart_data['layout'])
+                    st.plotly_chart(CS2_fig, use_container_width=True)
+                with trend4:
+                    with open('./assets/StarfieldExample.json', 'r') as file:
+                        Starfield_chart_data = json.load(file)
+                    S_fig = go.Figure(data=Starfield_chart_data['data'], layout=Starfield_chart_data['layout'])
+                    st.plotly_chart(S_fig, use_container_width=True)
+                with trend5:
+                    with open('./assets/NoManSkyExample.json', 'r') as file:
+                        NoMansSky_chart_data = json.load(file)
+                    NMS_fig = go.Figure(data=NoMansSky_chart_data['data'], layout=NoMansSky_chart_data['layout'])
+                    st.plotly_chart(NMS_fig, use_container_width=True)
+                with trend6:
+                    with open('./assets/TerrariaExample.json', 'r') as file:
+                        Terraria_chart_data = json.load(file)
+                    Terraria_fig = go.Figure(data=Terraria_chart_data['data'], layout=Terraria_chart_data['layout'])
+                    st.plotly_chart(Terraria_fig, use_container_width=True)
+                with trend7:
+                    with open('./assets/NBA2K24Example.json', 'r') as file:
+                        NBA_chart_data = json.load(file)
+                    NBA_fig = go.Figure(data=NBA_chart_data['data'], layout=NBA_chart_data['layout'])
+                    st.plotly_chart(NBA_fig, use_container_width=True)
+                with trend8:
+                    with open('./assets/ApexLegendsExample.json', 'r') as file:
+                        Apex_chart_data = json.load(file)
+                    Apex_fig = go.Figure(data=Apex_chart_data['data'], layout=Apex_chart_data['layout'])
+                    st.plotly_chart(Apex_fig, use_container_width=True)
         with st.container(border=True):
             st.header("Topic analysis")
             col1, col2 = st.columns(2)
