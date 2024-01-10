@@ -27,7 +27,7 @@ import plotly.express as px
 
 # UTILS
 from utils.SteamWrapper import get_Reviews
-from utils.MakeNetwork import make_network
+from utils.MakeNetwork import make_network, make_stacked_charts
 
 # NOTE THAT STEAM RETURNS PLAYTIME IN MINUTES
 # https://partner.steamgames.com/doc/store/getreviews
@@ -49,7 +49,6 @@ if not os.path.exists("game_id.pkl"):
 
 
 # Function to create a sample plot
-@st.cache_data
 def create_plots(input_game_name, num_reviews):
     # INGEST THE USER INPUT AND FIND THE ID OF THE GAME
     input_game_name = input_game_name.lower()
@@ -277,6 +276,11 @@ def create_plots(input_game_name, num_reviews):
     positive_review_network = make_network(positive_review_user_libraries)
     negative_review_network = make_network(negative_review_user_libraries)
 
+    # MAKE THE HORIZONTAL STACKED BAR CHART FOR EACH OF THE THREE NETWORKS
+    all_stacked_chart = make_stacked_charts(users_games)
+    positive_stacked_chart = make_stacked_charts(positive_review_user_libraries)
+    negative_stacked_chart = make_stacked_charts(negative_review_user_libraries)
+
     # # QUICK STAT FORMATS
     game_info["game_name"] = id_app_dict[app_id]
     game_info['averagePlaytimeFromReviews'] = review_dataframe['total_playtime'].mean()
@@ -287,7 +291,10 @@ def create_plots(input_game_name, num_reviews):
     game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
     game_info['private_profiles'] = private_profiles
 
-    return game_info, pie_chart, number_of_reviews, average_survival, post_completion_survival, line_chance_over_time, nmf_topic_analysis, all_review_network, positive_review_network, negative_review_network
+    return game_info, pie_chart, number_of_reviews, average_survival, post_completion_survival, line_chance_over_time, nmf_topic_analysis, [
+        all_review_network, positive_review_network, negative_review_network], [all_stacked_chart,
+                                                                                positive_stacked_chart,
+                                                                                negative_stacked_chart]
 
 
 # Streamlit app layout and components
@@ -316,7 +323,7 @@ if button_clicked:
 
     # GENERATE AND DISPLAY THE DIFFERENT TYPES OF GRAPHS
     try:
-        quick_stats, pie1, pie2, average_survival, post_completion_survival, general_trend, topics, all_network, positive_net, negative_net = create_plots(
+        quick_stats, pie1, pie2, average_survival, post_completion_survival, general_trend, topics, all_networks, all_percentages = create_plots(
             captured_user_input,
             num_reviews)
 
@@ -412,11 +419,14 @@ if button_clicked:
         tab1, tab2, tab3 = st.tabs(["All", "Positive", "Negative"])
         # TODO EACH GAME AS A PERCENT OF THE TOP GAMES OF PLAYERS
         with tab1:
-            st.plotly_chart(all_network, use_container_width=True)
+            st.plotly_chart(all_networks[0], use_container_width=True)
+            st.plotly_chart(all_percentages[0], use_container_width=True)
         with tab2:
-            st.plotly_chart(positive_net, use_container_width=True)
+            st.plotly_chart(all_networks[1], use_container_width=True)
+            st.plotly_chart(all_percentages[1], use_container_width=True)
         with tab3:
-            st.plotly_chart(negative_net, use_container_width=True)
+            st.plotly_chart(all_networks[2], use_container_width=True)
+            st.plotly_chart(all_percentages[2], use_container_width=True)
     except Exception as e:
         st.warning('Something went wrong, please try again', icon="⚠️")
         loading_placeholder.empty()
