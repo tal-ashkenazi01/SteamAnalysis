@@ -127,7 +127,6 @@ def create_plots(input_game_name, num_reviews):
                                       color_discrete_map={"Yes": 'darkblue', "No": 'darkred'})
     post_completion_survival.update_xaxes(title="Playtime post review (hours)")
 
-
     # MOVING AVERAGE TREND ANALYSIS
     positive_over_time = review_dataframe
     # WE CREATE BINS WITH THE NP ARRANGE, WITH EACH BIN CONTAINING 500 MINUTES
@@ -196,10 +195,20 @@ def create_plots(input_game_name, num_reviews):
     negative_review_user_libraries = []
     private_profiles = 0
     id_app_dict = {value: key for key, value in app_id_dict.items()}
+
+    start_time_estimate = time.time()
     for index in review_dataframe.index:
-        if index % 5 == 0:
-            with loading_placeholder:
-                st.write(f"Processed: {index} / {num_reviews}")
+        # WHAT PERCENT OF THE TASK IS COMPLETE
+        progress = (index + 1) / num_reviews
+        elapsed_time = time.time() - start_time_estimate
+        estimated_total_time = elapsed_time / progress
+        remaining_time = estimated_total_time - elapsed_time
+
+        # Convert remaining time to minutes
+        remaining_minutes = int(remaining_time // 60)
+        remaining_seconds = int(remaining_time % 60)
+        loading_placeholder.progress(progress,
+                                     text=f"Processed: {index} / {num_reviews}. Estimated time remaining: {remaining_minutes} min {remaining_seconds} sec")
 
         user_owned_games = requests.get(
             f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={steam_key}&steamid={review_dataframe['AuthorID'][index]}&format=json")
@@ -269,22 +278,21 @@ st.set_page_config(page_title="Steam Sense", page_icon='./assets/SteamSense128.i
 # COMPONENTS
 # HEADER AND TITLE
 st.title("Steam Sense: Steam Review Analytics Done Right")
-st.markdown("By Tal Ashkenazi")
+st.markdown("By Tal Ashkenazi - [Github](https://github.com/tal-ashkenazi01)")
 with st.container():
     col1, col2 = st.columns([0.8, 0.2])
     with col1:
         user_input = st.text_input("$$\Large \\text{Enter the name of the steam game: }$$", value="Lunacid")
     with col2:
-        num_reviews = st.number_input('$$\Large \\text{Number of reviews to query: }$$', min_value=50, format="%d", step=1, placeholder=50)
+        num_reviews = st.number_input('$$\Large \\text{Number of reviews to query: }$$', min_value=50, format="%d",
+                                      step=1, placeholder=50)
 button_clicked = st.button('Analyze')
 
 # Callback for button click
 if button_clicked:
     captured_user_input = user_input
     # LOADING SCREEN TO INTERACT WITH USER DURING LOADING
-    loading_placeholder = st.empty()
-    with loading_placeholder:
-        st.subheader(f"Loading...")
+    loading_placeholder = st.progress(0, text=None)
 
     # GENERATE AND DISPLAY THE DIFFERENT TYPES OF GRAPHS
     try:
