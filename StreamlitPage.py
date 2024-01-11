@@ -187,6 +187,8 @@ def create_plots(input_game_name, num_reviews):
         weights = filter[top_features_index]
         top_words[f"Topic {topicID}"] = [top_filter_words, weights]
 
+    print(top_words)
+
     # MAKE THE SUBPLOTS WITH THE TOP WORDS
     nmf_topic_analysis = make_subplots(rows=2, cols=5, vertical_spacing=0.2)
     row = 1
