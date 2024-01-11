@@ -30,13 +30,14 @@ import plotly.express as px
 # UTILS
 from utils.SteamWrapper import get_Reviews
 from utils.MakeNetwork import make_network, make_stacked_charts
-from utils.TextCleaning import clean_text, cohen_d, u_test
+from utils.TextCleaning import clean_text, cohen_d, u_test, generate_topics
 
 # NOTE THAT STEAM RETURNS PLAYTIME IN MINUTES
 # https://partner.steamgames.com/doc/store/getreviews
 # ENVIRONMENT SETUP
 load_dotenv()
 steam_key = os.getenv('STEAM_KEY')
+HUGGING_API_TOKEN = os.getenv('HUGGING_API_KEY')
 
 # SET UP THE PICKLE FILE FOR FUTURE READING
 if not os.path.exists("game_id.pkl"):
@@ -155,7 +156,6 @@ def create_plots(input_game_name, num_reviews):
     positive_over_time['Time_Bin'] = pd.cut(positive_over_time['total_playtime'], bins, right=False)
 
     # WE FIND JUST THE NUMBER OF POSITIVE REVIEWS AND AGGREGATE INTO NEW COLUMNS THEM BASED ON SUM POS AND TOTAL COUNT
-    # TODO LOG ODDS TO MINIMIZE THE VARIANCE
     positive_over_time['Positive_Review'] = review_dataframe["recommended"] == "Yes"
     grouped = positive_over_time.groupby('Time_Bin')['Positive_Review'].agg(
         [('Positive_Count', 'sum'), ('Total_Count', 'count')])
@@ -172,11 +172,14 @@ def create_plots(input_game_name, num_reviews):
     line_chance_over_time.update_yaxes(title="Percent recommended", ticksuffix="%")
 
     # TOPIC ANALYSIS
-    vectorizer = TfidfVectorizer(stop_words='english', max_df=.97, min_df=.025)
-    X = vectorizer.fit_transform(review_data['text'])
+    vectorizer = TfidfVectorizer(max_df=.95, min_df=.025, stop_words='english')
+    X = vectorizer.fit_transform(review_dataframe['text'])
 
     nmf = NMF(n_components=10, init='random').fit(X)
     feature_names = vectorizer.get_feature_names_out()
+
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
 
     # FIND THE FIVE MOST IMPORTANT WORDS
     num_words_to_use = 5
@@ -185,9 +188,8 @@ def create_plots(input_game_name, num_reviews):
         top_features_index = filter.argsort()[: -num_words_to_use - 1: -1]
         top_filter_words = [feature_names[i] for i in top_features_index]
         weights = filter[top_features_index]
-        top_words[f"Topic {topicID}"] = [top_filter_words, weights]
-
-    print(top_words)
+        scaled_weights = scaler.fit_transform(np.array(weights).reshape(-1, 1))  # CHANGE TO A 2D ARRAY
+        top_words[f"Topic {topicID}"] = [top_filter_words, scaled_weights.flatten()]
 
     # MAKE THE SUBPLOTS WITH THE TOP WORDS
     nmf_topic_analysis = make_subplots(rows=2, cols=5, vertical_spacing=0.2)
@@ -206,8 +208,8 @@ def create_plots(input_game_name, num_reviews):
     nmf_topic_analysis.update_layout(showlegend=False, height=600)
     nmf_topic_analysis.update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
 
-    # TODO: MORE TEXT PLOTTED AGAINST PERCENT TO RECOMMEND
-    # TODO: MAYBE? SUMMARIZATION OF THE TEXT USING SOME SUMMARIZATION EXTRACTION, THEN FEED IT TO CHAT GPT TO MAKE IT MORE READABLE
+    # TODO: KL DIVERGENCE
+    # https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence
 
     start_time = time.time()
     print(f"Processing begins at: {start_time}")
@@ -321,11 +323,15 @@ def create_plots(input_game_name, num_reviews):
     game_info['medianNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].median()
 
     # CALCULATE THE MAGINITUDE OF DIFFERENCES WITH COHEN'S D
-    game_info["cohens_d"] = (cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
+    game_info["cohens_d"] = (
+        cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
     game_info["r_statistic_at_review"] = u_test(averaging_df.get_group("Yes")['review_playtime'],
                                                 averaging_df.get_group("No")['review_playtime'])
     game_info["r_statistic_post_review"] = u_test(averaging_df.get_group("Yes")['continued_playtime'],
                                                   averaging_df.get_group("No")['continued_playtime'])
+
+    # GET TOPWORDS:
+    game_info["top_words"] = [x[0] for x in top_words.values()]
 
     game_info['private_profiles'] = private_profiles
 
@@ -601,7 +607,8 @@ if button_clicked:
                     combined_trend_graphs.add_trace(original_trend_data)
 
                     # COMBINE THE REST WITH THE ORIGINAL
-                    graph_names = ["Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky", "Terraria", "NBA 2K24", "Apex Legends"]
+                    graph_names = ["Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky", "Terraria",
+                                   "NBA 2K24", "Apex Legends"]
 
                     for i, graph_data in enumerate([ER_fig, CS2_fig, S_fig, NMS_fig, Terraria_fig, NBA_fig, Apex_fig]):
                         line_chart_data_to_add = graph_data.data[0]
@@ -616,11 +623,31 @@ if button_clicked:
         st.divider()
         with st.container():
             st.header("Topic analysis")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.plotly_chart(topics, use_container_width=True)
-            with col2:
-                st.markdown("**Example text**")
+            st.plotly_chart(topics, use_container_width=True)
+            st.markdown("#### [Zephyr](https://huggingface.co/HuggingFaceH4/zephyr-7b-beta) generated topics:")
+            st.markdown("Zephyr is part of the Hugging Face family of models")
+            expander_columns = st.columns(5)
+
+            with st.spinner("Using hugging face to generate topics... :hugging_face:"):
+                zephyr_generated_topics = []
+                for topic in quick_stats['top_words']:
+                    zephyr_generated_topics.append(generate_topics(topic, key=HUGGING_API_TOKEN))
+
+            # GET THE COLUMN THAT THE EXPANDER WILL BE PUT IN
+            expander_column_index = 0
+            for row_index, topics in enumerate(zephyr_generated_topics):
+
+                # IF IT'S AT 5, SET IT BACK TO 0
+                if expander_column_index == 5:
+                    expander_column_index = 0
+
+                with expander_columns[expander_column_index]:
+                    with st.expander(f"###### Topic {row_index + 1}: "):
+                        for word in topics:
+                            st.markdown(word.lower())
+
+                # INCREMENT THE COLUMN INDEX
+                expander_column_index += 1
 
         # NETWORK GRAPH SECTION
         st.divider()
