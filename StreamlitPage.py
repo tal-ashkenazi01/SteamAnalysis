@@ -293,18 +293,36 @@ def create_plots(input_game_name, num_reviews):
     # # QUICK STAT FORMATS
     game_info["game_name"] = id_app_dict[app_id]
     game_info['averagePlaytimeFromReviews'] = review_dataframe['total_playtime'].mean()
+    game_info['averagePlaytimeOnReview'] = review_dataframe['review_playtime'].mean()
+    game_info['medianPlaytimeOnReview'] = review_dataframe['review_playtime'].median()
     game_info['averagePlaytimePostReview'] = review_dataframe['continued_playtime'].mean()
     game_info['medianPlaytimePostReview'] = review_dataframe['continued_playtime'].median()
 
     averaging_df = review_dataframe.groupby("recommended")
-    # "averagePositivePlaytime"
-    game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
+    # POSITIVE REVIEW STATS
+    #######################
+    # TOTAL
+    game_info['averagePositiveTotalPlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
+
+    # ON REVIEW
+    game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].median()
     game_info['medianPositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].median()
+
+    # POST REVIEW
+    game_info['averagePositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].mean()
     game_info['medianPositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].median()
 
-    # "averageNegativePlaytime"
-    game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
+    # NEGATIVE REVIEW STATS
+    #######################
+    # TOTAL
+    game_info['averageNegativeTotalPlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
+
+    # ON REVIEW
+    game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].mean()
     game_info['medianNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].median()
+
+    # POST-REVIEW
+    game_info['averageNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].mean()
     game_info['medianNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].median()
 
     # CALCULATE THE MAGINITUDE OF DIFFERENCES WITH COHEN'S D
@@ -365,10 +383,10 @@ if button_clicked:
                     'Average playtime: :blue[**{:.2f} hours**]'.format(quick_stats['averagePlaytimeFromReviews']))
                 st.markdown(
                     'Average Positive Review playtime: :blue[**{:.2f} hours**]'.format(
-                        quick_stats['averagePositivePlaytime']))
+                        quick_stats['averagePositiveTotalPlaytime']))
                 st.markdown(
                     'Average Negative Review playtime: :blue[**{:.2f} hours**]'.format(
-                        quick_stats['averageNegativePlaytime']))
+                        quick_stats['averageNegativeTotalPlaytime']))
             with col2:
                 st.plotly_chart(pie1, use_container_width=True)
             with col3:
@@ -409,7 +427,31 @@ if button_clicked:
                 st.markdown(f"#### {median_analysis_text}")
                 st.markdown(f"Mann-Whitney r-value: {whitney_r_value:0.2f}")
 
-                # INFO
+                with st.expander("More stats"):
+                    st.markdown("###### All Reviews:")
+                    mean_col, median_col = st.columns(2)
+                    with mean_col:
+                        st.markdown(
+                            f"Average playtime at review: **{quick_stats['averagePlaytimeOnReview']:0.2f}** hours")
+                    with median_col:
+                        st.markdown(
+                            f"Median playtime at review: **{quick_stats['medianPlaytimeOnReview']:0.2f}** hours")
+                    st.divider()
+                    pos_review_col, neg_review_col = st.columns(2)
+                    with pos_review_col:
+                        st.markdown("###### Positive reviews:")
+                        st.markdown(
+                            f"Average playtime at review: **{quick_stats['averagePositivePlaytime']:0.2f}** hours")
+                        st.markdown(
+                            f"Median playtime at review: **{quick_stats['medianPositivePlaytime']:0.2f}** hours")
+                    with neg_review_col:
+                        st.markdown("###### Negative reviews:")
+                        st.markdown(
+                            f"Average playtime at review: **{quick_stats['averageNegativePlaytime']:0.2f}** hours")
+                        st.markdown(
+                            f"Median playtime at review: **{quick_stats['medianNegativePlaytime']:0.2f}** hours")
+
+                # EXPLANATIONS WITH MORE INFO
                 with st.expander("What does this mean?"):
                     st.markdown(
                         "Mann-Whitney's r-value is a measure of effect size (from -1 to 1) calculated from the U statistic. Simply put, the r-value represents how different the reviewers' playtime is. (Note that it is not related to $ r^{2} $).")
@@ -456,6 +498,30 @@ if button_clicked:
                 st.markdown(f"#### {continued_median_analysis_text}")
                 st.markdown(f"Mann-Whitney r-value: {whitney_r_value_post_review:0.2f}")
 
+                with st.expander("More stats"):
+                    st.markdown("###### All Reviews:")
+                    mean_col, median_col = st.columns(2)
+                    with mean_col:
+                        st.markdown(
+                            f"Average playtime post-review: **{average_playtime_post_review:0.2f}** hours")
+                    with median_col:
+                        st.markdown(
+                            f"Median playtime post-review: **{median_playtime_post_review:0.2f}** hours")
+                    st.divider()
+                    pos_review_col, neg_review_col = st.columns(2)
+                    with pos_review_col:
+                        st.markdown("###### Positive reviews:")
+                        st.markdown(
+                            f"Average post-review playtime: **{quick_stats['averagePositiveContinuedPlaytime']:0.2f}** hours")
+                        st.markdown(
+                            f"Median post-review playtime: **{quick_stats['medianPositiveContinuedPlaytime']:0.2f}** hours")
+                    with neg_review_col:
+                        st.markdown("###### Negative reviews:")
+                        st.markdown(
+                            f"Average post-review playtime: **{quick_stats['averageNegativeContinuedPlaytime']:0.2f}** hours")
+                        st.markdown(
+                            f"Median post-review playtime: **{quick_stats['medianNegativeContinuedPlaytime']:0.2f}** hours")
+
                 with st.expander("What does this mean?"):
                     st.markdown(
                         "Mann-Whitney's r-value is a measure of effect size (from -1 to 1) calculated from the U statistic. Simply put, the r-value represents how different the reviewers' playtime is. (Note that it is not related to $ r^{2} $).")
@@ -466,15 +532,18 @@ if button_clicked:
                     st.markdown(
                         "Large differences between positive and negative reviews with high playtime might mean that the game is highly replayable, but caters to a specific audience. It could also be a sign of a large change in the game that lead reviewers to stop playing")
         with st.container():
+            # CREATE A FIGURE TO CONTAIN ALL THE OTHER GRAPHS DATA
+            combined_trend_graphs = go.Figure()
+
             st.header("Likelihood of Recommending Game Over Playtime")
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("**Example text**")
             with col2:
                 st.markdown("$$\large \\text{Compare recommendations over playtime to large titles: }$$")
-                trend1, trend2, trend3, trend4, trend5, trend6, trend7, trend8 = st.tabs(
+                trend1, trend2, trend3, trend4, trend5, trend6, trend7, trend8, trend9 = st.tabs(
                     [quick_stats['game_name'], "Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky",
-                     "Terraria", "NBA 2K24", "Apex Legends"])
+                     "Terraria", "NBA 2K24", "Apex Legends", "Combined"])
                 with trend1:
                     st.plotly_chart(general_trend, use_container_width=True)
                 with trend2:
@@ -512,6 +581,29 @@ if button_clicked:
                         Apex_chart_data = json.load(file)
                     Apex_fig = go.Figure(data=Apex_chart_data['data'], layout=Apex_chart_data['layout'])
                     st.plotly_chart(Apex_fig, use_container_width=True)
+                with trend9:
+                    # MODIFY GENERAL TREND GRAPH TO BE IN-LINE WITH THE OTHERS
+                    original_trend_data = general_trend.data[0]
+                    original_trend_data['name'] = quick_stats['game_name']
+                    original_trend_data['x'] = ER_fig.data[0]['x']
+                    original_trend_data['line']['color'] = "#ffff00"
+                    original_trend_data['showlegend'] = True
+
+                    # COMBINE THE ORIGINAL GRAPH WITH THE NEW ONE
+                    combined_trend_graphs.add_trace(original_trend_data)
+
+                    # COMBINE THE REST WITH THE ORIGINAL
+                    color_scheme = ["#0000ff", "#2a00d4", "#5500aa", "#7f007f", "#aa0055", "#d4002a", "#ff0000"]
+                    graph_names = ["Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky", "Terraria", "NBA 2K24", "Apex Legends"]
+
+                    for i, graph_data in enumerate([ER_fig, CS2_fig, S_fig, NMS_fig, Terraria_fig, NBA_fig, Apex_fig]):
+                        line_chart_data_to_add = graph_data.data[0]
+                        line_chart_data_to_add['showlegend'] = True
+                        line_chart_data_to_add['name'] = graph_names[i]
+                        line_chart_data_to_add['line']['color'] = color_scheme[i]
+                        combined_trend_graphs.add_trace(line_chart_data_to_add)
+
+                    st.plotly_chart(combined_trend_graphs, use_container_width=True)
         with st.container(border=True):
             st.header("Topic analysis")
             col1, col2 = st.columns(2)
