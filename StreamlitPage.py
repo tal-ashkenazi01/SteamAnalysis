@@ -1,4 +1,6 @@
 # UI
+# LINK FOR EVENTUAL DEPLOYMENT TO DOCKER CONTAINER
+# https://docs.streamlit.io/knowledge-base/tutorials/deploy/docker
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -28,9 +30,11 @@ import plotly.express as px
 # UTILS
 from utils.SteamWrapper import get_Reviews
 from utils.MakeNetwork import make_network, make_stacked_charts
+from utils.TextCleaning import clean_text
 
 # NOTE THAT STEAM RETURNS PLAYTIME IN MINUTES
 # https://partner.steamgames.com/doc/store/getreviews
+# ENVIRONMENT SETUP
 load_dotenv()
 steam_key = os.getenv('STEAM_KEY')
 
@@ -96,7 +100,7 @@ def create_plots(input_game_name, num_reviews):
         review_playtime.append(playtime_review_temp)
         review_total_playtime.append(playtime_total_temp)
         post_review_playtime.append(playtime_total_temp - playtime_review_temp)
-        review_text.append(review['reviewText'])
+        review_text.append(review['reviewText'].lower())
 
     review_data = {"AuthorID": review_author_id,
                    "num_reviews": number_of_reviews,
@@ -106,6 +110,10 @@ def create_plots(input_game_name, num_reviews):
                    "total_playtime": review_total_playtime,
                    "text": review_text}
     review_dataframe = pd.DataFrame(review_data)
+
+    # CLEAN THE TEXT HERE
+    with st.spinner('Cleaning review text...'):
+        review_dataframe['text'] = review_dataframe['text'].apply(clean_text)
 
     # PIE CHART FOR SIMPLE PERCENT RECOMMENDED OPTIONS
     pie_chart = px.pie(review_dataframe, names='recommended', color='recommended',
@@ -204,6 +212,7 @@ def create_plots(input_game_name, num_reviews):
     nmf_topic_analysis.update_traces(hovertemplate="<b>%{x}</b><extra></extra>")
 
     # TODO: MORE TEXT PLOTTED AGAINST PERCENT TO RECOMMEND
+    # TODO: MAYBE? SUMMARIZATION OF THE TEXT USING SOME SUMMARIZATION EXTRACTION, THEN FEED IT TO CHAT GPT TO MAKE IT MORE READABLE
 
     start_time = time.time()
     print(f"Processing begins at: {start_time}")
@@ -419,12 +428,15 @@ if button_clicked:
         tab1, tab2, tab3 = st.tabs(["All", "Positive", "Negative"])
         # TODO EACH GAME AS A PERCENT OF THE TOP GAMES OF PLAYERS
         with tab1:
+            st.header("Most Played Games by Reviewers")
             st.plotly_chart(all_networks[0], use_container_width=True)
             st.plotly_chart(all_percentages[0], use_container_width=True)
         with tab2:
+            st.header("Most Played Games by Fans")
             st.plotly_chart(all_networks[1], use_container_width=True)
             st.plotly_chart(all_percentages[1], use_container_width=True)
         with tab3:
+            st.header("Most Played Games by Critics")
             st.plotly_chart(all_networks[2], use_container_width=True)
             st.plotly_chart(all_percentages[2], use_container_width=True)
     except Exception as e:
