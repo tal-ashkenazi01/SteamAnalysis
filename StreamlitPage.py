@@ -30,7 +30,7 @@ import plotly.express as px
 # UTILS
 from utils.SteamWrapper import get_Reviews
 from utils.MakeNetwork import make_network, make_stacked_charts
-from utils.TextCleaning import clean_text
+from utils.TextCleaning import clean_text, cohen_d, u_test
 
 # NOTE THAT STEAM RETURNS PLAYTIME IN MINUTES
 # https://partner.steamgames.com/doc/store/getreviews
@@ -105,7 +105,7 @@ def create_plots(input_game_name, num_reviews):
     review_data = {"AuthorID": review_author_id,
                    "num_reviews": number_of_reviews,
                    "recommended": review_recommendation,
-                   "review_playtime": review_recommendation,
+                   "review_playtime": review_playtime,
                    "continued_playtime": post_review_playtime,
                    "total_playtime": review_total_playtime,
                    "text": review_text}
@@ -293,11 +293,27 @@ def create_plots(input_game_name, num_reviews):
     # # QUICK STAT FORMATS
     game_info["game_name"] = id_app_dict[app_id]
     game_info['averagePlaytimeFromReviews'] = review_dataframe['total_playtime'].mean()
+    game_info['averagePlaytimePostReview'] = review_dataframe['continued_playtime'].mean()
+    game_info['medianPlaytimePostReview'] = review_dataframe['continued_playtime'].median()
+
     averaging_df = review_dataframe.groupby("recommended")
     # "averagePositivePlaytime"
     game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
+    game_info['medianPositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].median()
+    game_info['medianPositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].median()
+
     # "averageNegativePlaytime"
     game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
+    game_info['medianNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].median()
+    game_info['medianNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].median()
+
+    # CALCULATE THE MAGINITUDE OF DIFFERENCES WITH COHEN'S D
+    # game_info["cohens_d"] = (cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
+    game_info["r_statistic_at_review"] = u_test(averaging_df.get_group("Yes")['review_playtime'],
+                                                averaging_df.get_group("No")['review_playtime'])
+    game_info["r_statistic_post_review"] = u_test(averaging_df.get_group("Yes")['continued_playtime'],
+                                                  averaging_df.get_group("No")['continued_playtime'])
+
     game_info['private_profiles'] = private_profiles
 
     return game_info, pie_chart, number_of_reviews, average_survival, post_completion_survival, line_chance_over_time, nmf_topic_analysis, [
@@ -357,17 +373,98 @@ if button_clicked:
                 st.plotly_chart(pie1, use_container_width=True)
             with col3:
                 st.plotly_chart(pie2, use_container_width=True)
-        with st.container(border=True):
+        with st.container():
             st.header("Survival Analysis")
             col1, col2 = st.columns(2)
             with col1:
+                # ON REVIEW
                 st.plotly_chart(average_survival)
                 st.subheader("How Many Hours Did Reviewers Play?")
-                st.markdown("Explanation")
+
+                # PROCESS WHETHER OR NOT THE MEDIANS ARE CLOSE
+                # cohens_d_value = quick_stats['cohens_d']
+                whitney_r_value = quick_stats['r_statistic_at_review']
+
+                median_analysis_text = f"{quick_stats['game_name']}"
+                if abs(whitney_r_value) < 0.1:
+                    # SMALL DIFFERENCE
+                    median_analysis_text += " has a :blue[small] difference between positive and negative playtime"
+                elif abs(whitney_r_value) < 0.3:
+                    # MEDIUM DIFFERENCE
+                    median_analysis_text += " has a :blue[medium] difference between positive and negative playtime"
+                elif abs(whitney_r_value) < 0.8:
+                    # LARGE DIFFERENCE
+                    median_analysis_text += " has a :blue[large] difference between positive and negative playtime"
+                else:
+                    # SIGNIFICANT DIFFERENCE
+                    median_analysis_text += " has a :blue[significant] difference between positive and negative playtime"
+
+                difference_in_medians = quick_stats['medianPositivePlaytime'] - quick_stats['medianNegativePlaytime']
+
+                if difference_in_medians >= 0:
+                    median_analysis_text += ", and the median is skewed :green[positive]."
+                else:
+                    median_analysis_text += ", and the median is skewed :red[negative]."
+
+                st.markdown(f"#### {median_analysis_text}")
+                st.markdown(f"Mann-Whitney r-value: {whitney_r_value:0.2f}")
+
+                # INFO
+                with st.expander("What does this mean?"):
+                    st.markdown(
+                        "Mann-Whitney's r-value is a measure of effect size (from -1 to 1) calculated from the U statistic. Simply put, the r-value represents how different the reviewers' playtime is. (Note that it is not related to $ r^{2} $).")
+                    st.markdown(
+                        "Positively skewed playtime can mean that the game fills a niche, possibly implying that the game is unique, difficult, or quirky in ways that leads critics to abandon it early.")
+                    st.markdown(
+                        "Similar playtime can depend on how high playtime is and can either mean that the game was boring or mediocre, or that the game is controversial. Critics with high playtime may have been angered or disappointed by updates to the game that affected their enjoyment.")
+                    st.markdown(
+                        "Negatively skewed playtime means that the experience for players became less enjoyable as time went on, or it can be from changes to the game that the reduced enjoyment of committed players. High negative playtime can also mean that users express disapointment in reviews, but may ultimately continue playing.")
             with col2:
+                # POST REVIEW
                 st.plotly_chart(post_completion_survival)
                 st.subheader("How Many Hours Were Played Post-Review?")
-                st.markdown("Explanation")
+
+                whitney_r_value_post_review = quick_stats['r_statistic_post_review']
+
+                continued_median_analysis_text = f"{quick_stats['game_name']} has a "
+                if abs(whitney_r_value_post_review) < 0.1:
+                    # SMALL DIFFERENCE
+                    continued_median_analysis_text += ":blue[small]"
+                elif abs(whitney_r_value_post_review) < 0.3:
+                    # MEDIUM DIFFERENCE
+                    continued_median_analysis_text += ":blue[medium]"
+                elif abs(whitney_r_value_post_review) < 0.8:
+                    # LARGE DIFFERENCE
+                    continued_median_analysis_text += ":blue[large]"
+                else:
+                    # SIGNIFICANT DIFFERENCE
+                    continued_median_analysis_text += ":blue[significant]"
+                continued_median_analysis_text += " difference between positive and negative playtime"
+
+                average_playtime_post_review = quick_stats['averagePlaytimePostReview']
+                median_playtime_post_review = quick_stats['medianPlaytimePostReview']
+
+                # POSSIBLE COMPARE THE DIFFERENCES BETWEEN THIS AND OTHER GAMES?
+                continued_median_analysis_text += ". Median time in game post-review: "
+                if median_playtime_post_review < 10:
+                    continued_median_analysis_text += f":red[{median_playtime_post_review:.0f}] hours."
+                elif median_playtime_post_review < 50:
+                    continued_median_analysis_text += f":blue[{median_playtime_post_review:.0f}] hours."
+                else:
+                    continued_median_analysis_text += f":green[{median_playtime_post_review:.0f}] hours."
+
+                st.markdown(f"#### {continued_median_analysis_text}")
+                st.markdown(f"Mann-Whitney r-value: {whitney_r_value_post_review:0.2f}")
+
+                with st.expander("What does this mean?"):
+                    st.markdown(
+                        "Mann-Whitney's r-value is a measure of effect size (from -1 to 1) calculated from the U statistic. Simply put, the r-value represents how different the reviewers' playtime is. (Note that it is not related to $ r^{2} $).")
+                    st.markdown(
+                        "Things that may affect playtime post-review include game replayability, number of game updates, and whether or not the game is multiplayer.")
+                    st.markdown(
+                        "Small/medium differences between positive and negative reviews with high playtime might mean that the game has mixed reception, but has high replayability.")
+                    st.markdown(
+                        "Large differences between positive and negative reviews with high playtime might mean that the game is highly replayable, but caters to a specific audience. It could also be a sign of a large change in the game that lead reviewers to stop playing")
         with st.container():
             st.header("Likelihood of Recommending Game Over Playtime")
             col1, col2 = st.columns(2)
