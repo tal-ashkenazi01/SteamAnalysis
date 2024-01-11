@@ -5,6 +5,7 @@ from nltk.corpus import stopwords
 import numpy as np
 from scipy.stats import mannwhitneyu
 
+nltk.download('punkt')
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
 stop_words.update({'like', 'yes', 'just', 'actually', 'basically', 'seriously', 'literally', 've'})
