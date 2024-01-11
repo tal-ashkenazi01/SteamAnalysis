@@ -69,9 +69,9 @@ def create_plots(input_game_name, num_reviews):
 
     app_id = app_id_list[0] if len(app_id_list) > 0 else 0
 
-    reviews = dict()
     try:
-        reviews = get_Reviews(appid=app_id, reviewNum=num_reviews)
+        with st.spinner('Fetching reviews...'):
+            reviews = get_Reviews(appid=app_id, reviewNum=num_reviews)
     except Exception as error:
         st.warning("Fatal error during API query. Please try again.", icon="⚠️")
         print(error)
@@ -126,15 +126,8 @@ def create_plots(input_game_name, num_reviews):
     labels = ['0-10 Inexperienced Reviewer', '11-50 Experienced Reviewer', '51-200 Pro-Reviewer', '>200 Review Mogul']
     review_dataframe['binned'] = pd.DataFrame(
         pd.cut(review_dataframe['num_reviews'], bins=bins, labels=labels, include_lowest=True, right=False))
-    # # THEORETICAL SUNBURST DIAGRAM, INNER CIRCLE IS TOO SMALL + LEGEND IS MISSING
-    # number_of_reviews = px.sunburst(review_dataframe, path=['binned', 'recommended'],
-    #                                 values=[1 for x in review_dataframe.index],
-    #                                 color='binned',
-    #                                 names='binned',
-    #                                 labels=labels,
-    #                                 title="Experience of Reviewers",
-    #                                 hover_data=['binned'],
-    #                                 branchvalues='total')
+
+    # CREATE THE EXPERIENCE PIE CHART
     number_of_reviews = px.pie(review_dataframe, names='binned', color='binned', labels=labels,
                                title="Experience of Reviewers", hover_data='binned')
     number_of_reviews.update_traces(hovertemplate=None)
@@ -326,7 +319,7 @@ def create_plots(input_game_name, num_reviews):
     game_info['medianNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].median()
 
     # CALCULATE THE MAGINITUDE OF DIFFERENCES WITH COHEN'S D
-    # game_info["cohens_d"] = (cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
+    game_info["cohens_d"] = (cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
     game_info["r_statistic_at_review"] = u_test(averaging_df.get_group("Yes")['review_playtime'],
                                                 averaging_df.get_group("No")['review_playtime'])
     game_info["r_statistic_post_review"] = u_test(averaging_df.get_group("Yes")['continued_playtime'],
@@ -391,13 +384,15 @@ if button_clicked:
                 st.plotly_chart(pie1, use_container_width=True)
             with col3:
                 st.plotly_chart(pie2, use_container_width=True)
+
+        # SURVIVAL ANALYSIS SECTION
         with st.container():
             st.header("Survival Analysis")
             col1, col2 = st.columns(2)
             with col1:
                 # ON REVIEW
-                st.plotly_chart(average_survival)
                 st.subheader("How Many Hours Did Reviewers Play?")
+                st.plotly_chart(average_survival)
 
                 # PROCESS WHETHER OR NOT THE MEDIANS ARE CLOSE
                 # cohens_d_value = quick_stats['cohens_d']
@@ -463,8 +458,8 @@ if button_clicked:
                         "Negatively skewed playtime means that the experience for players became less enjoyable as time went on, or it can be from changes to the game that the reduced enjoyment of committed players. High negative playtime can also mean that users express disapointment in reviews, but may ultimately continue playing.")
             with col2:
                 # POST REVIEW
-                st.plotly_chart(post_completion_survival)
                 st.subheader("How Many Hours Were Played Post-Review?")
+                st.plotly_chart(post_completion_survival)
 
                 whitney_r_value_post_review = quick_stats['r_statistic_post_review']
 
@@ -487,7 +482,7 @@ if button_clicked:
                 median_playtime_post_review = quick_stats['medianPlaytimePostReview']
 
                 # POSSIBLE COMPARE THE DIFFERENCES BETWEEN THIS AND OTHER GAMES?
-                continued_median_analysis_text += ". Median time in game post-review: "
+                continued_median_analysis_text += ". Median playtime post-review: "
                 if median_playtime_post_review < 10:
                     continued_median_analysis_text += f":red[{median_playtime_post_review:.0f}] hours."
                 elif median_playtime_post_review < 50:
@@ -531,6 +526,9 @@ if button_clicked:
                         "Small/medium differences between positive and negative reviews with high playtime might mean that the game has mixed reception, but has high replayability.")
                     st.markdown(
                         "Large differences between positive and negative reviews with high playtime might mean that the game is highly replayable, but caters to a specific audience. It could also be a sign of a large change in the game that lead reviewers to stop playing")
+
+        # RECOMMENDATION % OVER TIME
+        st.divider()
         with st.container():
             # CREATE A FIGURE TO CONTAIN ALL THE OTHER GRAPHS DATA
             combined_trend_graphs = go.Figure()
@@ -544,41 +542,49 @@ if button_clicked:
                 trend1, trend2, trend3, trend4, trend5, trend6, trend7, trend8, trend9 = st.tabs(
                     [quick_stats['game_name'], "Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky",
                      "Terraria", "NBA 2K24", "Apex Legends", "Combined"])
+                color_scheme = px.colors.qualitative.Antique
                 with trend1:
                     st.plotly_chart(general_trend, use_container_width=True)
                 with trend2:
                     with open('./assets/EldenRingExample.json', 'r') as file:
                         Elden_Ring_chart_data = json.load(file)
+                    Elden_Ring_chart_data['data'][0]['line']['color'] = color_scheme[0]
                     ER_fig = go.Figure(data=Elden_Ring_chart_data['data'], layout=Elden_Ring_chart_data['layout'])
                     st.plotly_chart(ER_fig, use_container_width=True)
                 with trend3:
                     with open('./assets/CS2Example.json', 'r') as file:
                         CS2_chart_data = json.load(file)
+                    CS2_chart_data['data'][0]['line']['color'] = color_scheme[1]
                     CS2_fig = go.Figure(data=CS2_chart_data['data'], layout=CS2_chart_data['layout'])
                     st.plotly_chart(CS2_fig, use_container_width=True)
                 with trend4:
                     with open('./assets/StarfieldExample.json', 'r') as file:
                         Starfield_chart_data = json.load(file)
+                    Starfield_chart_data['data'][0]['line']['color'] = color_scheme[2]
                     S_fig = go.Figure(data=Starfield_chart_data['data'], layout=Starfield_chart_data['layout'])
                     st.plotly_chart(S_fig, use_container_width=True)
                 with trend5:
                     with open('./assets/NoManSkyExample.json', 'r') as file:
                         NoMansSky_chart_data = json.load(file)
+                    NoMansSky_chart_data['data'][0]['line']['color'] = color_scheme[3]
                     NMS_fig = go.Figure(data=NoMansSky_chart_data['data'], layout=NoMansSky_chart_data['layout'])
                     st.plotly_chart(NMS_fig, use_container_width=True)
                 with trend6:
                     with open('./assets/TerrariaExample.json', 'r') as file:
                         Terraria_chart_data = json.load(file)
+                    Terraria_chart_data['data'][0]['line']['color'] = color_scheme[4]
                     Terraria_fig = go.Figure(data=Terraria_chart_data['data'], layout=Terraria_chart_data['layout'])
                     st.plotly_chart(Terraria_fig, use_container_width=True)
                 with trend7:
                     with open('./assets/NBA2K24Example.json', 'r') as file:
                         NBA_chart_data = json.load(file)
+                    NBA_chart_data['data'][0]['line']['color'] = color_scheme[5]
                     NBA_fig = go.Figure(data=NBA_chart_data['data'], layout=NBA_chart_data['layout'])
                     st.plotly_chart(NBA_fig, use_container_width=True)
                 with trend8:
                     with open('./assets/ApexLegendsExample.json', 'r') as file:
                         Apex_chart_data = json.load(file)
+                    Apex_chart_data['data'][0]['line']['color'] = color_scheme[6]
                     Apex_fig = go.Figure(data=Apex_chart_data['data'], layout=Apex_chart_data['layout'])
                     st.plotly_chart(Apex_fig, use_container_width=True)
                 with trend9:
@@ -586,14 +592,13 @@ if button_clicked:
                     original_trend_data = general_trend.data[0]
                     original_trend_data['name'] = quick_stats['game_name']
                     original_trend_data['x'] = ER_fig.data[0]['x']
-                    original_trend_data['line']['color'] = "#ffff00"
+                    original_trend_data['line']['color'] = "#ff0000"
                     original_trend_data['showlegend'] = True
 
                     # COMBINE THE ORIGINAL GRAPH WITH THE NEW ONE
                     combined_trend_graphs.add_trace(original_trend_data)
 
                     # COMBINE THE REST WITH THE ORIGINAL
-                    color_scheme = ["#0000ff", "#2a00d4", "#5500aa", "#7f007f", "#aa0055", "#d4002a", "#ff0000"]
                     graph_names = ["Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky", "Terraria", "NBA 2K24", "Apex Legends"]
 
                     for i, graph_data in enumerate([ER_fig, CS2_fig, S_fig, NMS_fig, Terraria_fig, NBA_fig, Apex_fig]):
@@ -604,13 +609,19 @@ if button_clicked:
                         combined_trend_graphs.add_trace(line_chart_data_to_add)
 
                     st.plotly_chart(combined_trend_graphs, use_container_width=True)
-        with st.container(border=True):
+
+        # TOPIC ANALYSIS SECTION
+        st.divider()
+        with st.container():
             st.header("Topic analysis")
             col1, col2 = st.columns(2)
             with col1:
                 st.plotly_chart(topics, use_container_width=True)
             with col2:
                 st.markdown("**Example text**")
+
+        # NETWORK GRAPH SECTION
+        st.divider()
         st.header("User similarity analysis")
         st.markdown("**explanation goes here**")
         st.markdown(f":red[Excluded {quick_stats['private_profiles']} private profiles from data]")

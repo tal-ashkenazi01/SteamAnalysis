@@ -7,7 +7,7 @@ from scipy.stats import mannwhitneyu
 
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
-
+stop_words.add(["like", "yes", "just", 'actually', 'basically', 'seriously', 'literally'])
 
 def clean_text(text):
     # ASSUMES THAT THE TEXT COMES IN LOWER-CASE
