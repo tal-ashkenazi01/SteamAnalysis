@@ -7,7 +7,7 @@ from scipy.stats import mannwhitneyu
 
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
-stop_words.union({"like", "yes", "just", 'actually', 'basically', 'seriously', 'literally'})
+stop_words.update({'like', 'yes', 'just', 'actually', 'basically', 'seriously', 'literally', 've'})
 
 
 def clean_text(text):
@@ -17,7 +17,8 @@ def clean_text(text):
     # REMOVE NUMBERS
     text = re.sub(f"[{re.escape(string.punctuation)}0-9]", "", text)
     # REMOVE STOPWORDS
-    text = ' '.join([word for word in text.split() if word.lower() not in stop_words])
+    text = ' '.join([word for word in nltk.word_tokenize(text) if word.lower() not in stop_words])
+
     return text
 
 

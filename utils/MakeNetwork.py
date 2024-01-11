@@ -68,7 +68,7 @@ def make_network(input_list):
                        hoverinfo='text',
                        marker=dict(size=15, line_width=1, showscale=False,
                                    coloraxis="coloraxis", color=[node_adjacencies[i]])))
-    user_network.update_layout(height=800, coloraxis={'colorscale': 'Aggrnyl'}, coloraxis_showscale=False,
+    user_network.update_layout(height=700, coloraxis={'colorscale': 'Aggrnyl'}, coloraxis_showscale=False,
                                legend={'itemsizing': 'constant', 'font': {'size': 10}})
 
     return user_network
