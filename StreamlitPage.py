@@ -12,6 +12,7 @@ import os
 from dotenv import load_dotenv
 import traceback
 import time
+import random
 
 # TEXT PROCESSING
 from thefuzz import fuzz, process
@@ -28,7 +29,7 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 
 # UTILS
-from utils.SteamWrapper import get_Reviews
+from utils.SteamWrapper import get_Reviews, get_gameplay_video
 from utils.MakeNetwork import make_network, make_stacked_charts
 from utils.TextCleaning import clean_text, cohen_d, u_test, generate_topics
 
@@ -37,6 +38,7 @@ from utils.TextCleaning import clean_text, cohen_d, u_test, generate_topics
 # ENVIRONMENT SETUP
 load_dotenv()
 steam_key = os.getenv('STEAM_KEY')
+GOOGLE_API_TOKEN = os.getenv('GOOGLE_API_KEY')
 HUGGING_API_TOKEN = os.getenv('HUGGING_API_KEY')
 
 # SET UP THE PICKLE FILE FOR FUTURE READING
@@ -66,7 +68,7 @@ def create_plots(input_game_name, num_reviews):
             app_id_list.append(app_id_dict[match_ratios[0][0]])
 
         except Exception as error:
-            st.warning("Error with finding the game name. Please check spelling and try again.", icon="⚠️")
+            st.Error("Error with finding the game name. Please check spelling and try again.", icon="🚨️")
 
     app_id = app_id_list[0] if len(app_id_list) > 0 else 0
 
@@ -74,7 +76,7 @@ def create_plots(input_game_name, num_reviews):
         with st.spinner('Fetching reviews...'):
             reviews = get_Reviews(appid=app_id, reviewNum=num_reviews)
     except Exception as error:
-        st.warning("Fatal error during API query. Please try again.", icon="⚠️")
+        st.Error("Fatal error during API query. Please try again.", icon="🚨️")
         print(error)
         print(traceback.print_exc())
         return
@@ -289,6 +291,7 @@ def create_plots(input_game_name, num_reviews):
 
     # # QUICK STAT FORMATS
     game_info["game_name"] = id_app_dict[app_id]
+    game_info["app_id"] = app_id
     game_info['averagePlaytimeFromReviews'] = review_dataframe['total_playtime'].mean()
     game_info['averagePlaytimeOnReview'] = review_dataframe['review_playtime'].mean()
     game_info['medianPlaytimeOnReview'] = review_dataframe['review_playtime'].median()
@@ -298,37 +301,64 @@ def create_plots(input_game_name, num_reviews):
     averaging_df = review_dataframe.groupby("recommended")
     # POSITIVE REVIEW STATS
     #######################
+    # POSITIVE REVIEW FLAG
+    positive_review_flag = True if "Yes" in averaging_df['recommended'].unique() else False
+
     # TOTAL
-    game_info['averagePositiveTotalPlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
+    if positive_review_flag:
+        game_info['averagePositiveTotalPlaytime'] = averaging_df.get_group("Yes")['total_playtime'].mean()
 
-    # ON REVIEW
-    game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].median()
-    game_info['medianPositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].median()
+        # ON REVIEW
+        game_info['averagePositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].mean()
+        game_info['medianPositivePlaytime'] = averaging_df.get_group("Yes")['review_playtime'].median()
 
-    # POST REVIEW
-    game_info['averagePositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].mean()
-    game_info['medianPositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].median()
+        # POST REVIEW
+        game_info['averagePositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].mean()
+        game_info['medianPositiveContinuedPlaytime'] = averaging_df.get_group("Yes")['continued_playtime'].median()
+    else:
+        data_info.warning("No positive reviews found. Consider increasing sample size.", "⚠️")
+        game_info['averagePositiveTotalPlaytime'] = 0
+        game_info['averagePositivePlaytime'] = 0
+        game_info['medianPositivePlaytime'] = 0
+        game_info['averagePositiveContinuedPlaytime'] = 0
+        game_info['medianPositiveContinuedPlaytime'] = 0
 
     # NEGATIVE REVIEW STATS
     #######################
-    # TOTAL
-    game_info['averageNegativeTotalPlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
+    # FLAG IF THERE ARE NO NEGATIVE REVIEWS:
+    negative_review_flag = True if "No" in averaging_df['recommended'].unique() else False
 
-    # ON REVIEW
-    game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].mean()
-    game_info['medianNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].median()
+    if negative_review_flag:
+        # TOTAL
+        game_info['averageNegativeTotalPlaytime'] = averaging_df.get_group("No")['total_playtime'].mean()
 
-    # POST-REVIEW
-    game_info['averageNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].mean()
-    game_info['medianNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].median()
+        # ON REVIEW
+        game_info['averageNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].mean()
+        game_info['medianNegativePlaytime'] = averaging_df.get_group("No")['review_playtime'].median()
 
-    # CALCULATE THE MAGINITUDE OF DIFFERENCES WITH COHEN'S D
-    game_info["cohens_d"] = (
-        cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
-    game_info["r_statistic_at_review"] = u_test(averaging_df.get_group("Yes")['review_playtime'],
-                                                averaging_df.get_group("No")['review_playtime'])
-    game_info["r_statistic_post_review"] = u_test(averaging_df.get_group("Yes")['continued_playtime'],
-                                                  averaging_df.get_group("No")['continued_playtime'])
+        # POST-REVIEW
+        game_info['averageNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].mean()
+        game_info['medianNegativeContinuedPlaytime'] = averaging_df.get_group("No")['continued_playtime'].median()
+    else:
+        data_info.warning("No negative reviews found. Consider increasing sample size.", icon="⚠️")
+        game_info['averageNegativeTotalPlaytime'] = 0
+        game_info['averageNegativePlaytime'] = 0
+        game_info['medianNegativePlaytime'] = 0
+        game_info['averageNegativeContinuedPlaytime'] = 0
+        game_info['medianNegativeContinuedPlaytime'] = 0
+
+    if positive_review_flag and negative_review_flag:
+        # CALCULATE THE MAGNINITUDE OF DIFFERENCES WITH COHEN'S D
+        game_info["cohens_d"] = (
+            cohen_d(averaging_df.get_group("Yes")['review_playtime'], averaging_df.get_group("No")['review_playtime']))
+        game_info["r_statistic_at_review"] = u_test(averaging_df.get_group("Yes")['review_playtime'],
+                                                    averaging_df.get_group("No")['review_playtime'])
+        game_info["r_statistic_post_review"] = u_test(averaging_df.get_group("Yes")['continued_playtime'],
+                                                      averaging_df.get_group("No")['continued_playtime'])
+    else:
+        game_info["cohens_d"] = 0
+        game_info["r_statistic_at_review"] = 0
+        game_info["r_statistic_post_review"] = 0
 
     # GET TOPWORDS:
     game_info["top_words"] = [x[0] for x in top_words.values()]
@@ -347,21 +377,44 @@ st.set_page_config(page_title="Steam Sense", page_icon='./assets/SteamSense128.i
 
 # COMPONENTS
 # HEADER AND TITLE
-st.title("Steam Sense: Steam Review Analytics Done Right")
+alert_placeholder = st.empty()
+st.title("Steam Sense: Steam Review Analytics")
 st.markdown("By Tal Ashkenazi - [Github](https://github.com/tal-ashkenazi01)")
 with st.container():
     col1, col2 = st.columns([0.7, 0.3])
     with col1:
-        user_input = st.text_input("$$\Large \\text{Enter the name of the steam game: }$$", value="Lunacid")
+        text_input_placeholder = st.empty()
+        user_input = text_input_placeholder.text_input("$$\Large \\text{Enter the name of the steam game: }$$",
+                                                       value="Lunacid")
     with col2:
-        num_reviews = st.number_input('$$\Large \\text{Select Number of Reviews: }$$', min_value=50, format="%d",
-                                      step=1, placeholder=50,
-                                      help="Going above 5000 reviews not recommended and will lead to long wait times")
-button_clicked = st.button('Analyze')
+        number_input_placeholder = st.empty()
+        num_reviews = number_input_placeholder.number_input('$$\Large \\text{Select Number of Reviews: }$$',
+                                                            min_value=50, format="%d",
+                                                            step=1, value=200,
+                                                            help="Going above 5000 reviews not recommended and will lead to long wait times")
+    button_centering_col = st.columns([0.25, 0.25, 0.25, 0.25])
+    with button_centering_col[1]:
+        button_clicked = st.button('Analyze', use_container_width=True,
+                                   help="Input any title from the Steam store above, then click analyze!")
+    with button_centering_col[2]:
+        random_game = st.button("Don't know any games? Click me!", use_container_width=True,
+                                help="Choose a random game to analyze. This still uses your number of input reviews")
+    data_info = st.empty()
 
 # Callback for button click
-if button_clicked:
+if button_clicked or random_game:
     captured_user_input = user_input
+    if num_reviews < 100:
+        alert_placeholder.warning(
+            "Warning: Running analysis with less than 100 reviews will lead to low quality results", icon="⚠️")
+
+    if random_game:
+        captured_user_input = random.choice(
+            ["Inscryption", "NBA 2K23", "Slay the Spire", "Tom Clancy's Rainbow Six Siege", "PUBG: Battlegrounds",
+             "Sid Meier’s Civilization vi", "Baldur's Gate 3", "Counter-Strike 2", "EA SPORTS FC 24"])
+        text_input_placeholder.text_input("$$\Large \\text{Enter the name of the steam game: }$$",
+                                          value=captured_user_input)
+
     # LOADING SCREEN TO INTERACT WITH USER DURING LOADING
     loading_placeholder = st.progress(0, text=None)
 
@@ -373,8 +426,28 @@ if button_clicked:
 
         loading_placeholder.empty()
         with st.container():
-            col1, col2, col3 = st.columns([0.3, 0.35, 0.35])
-            with col1:
+            title_text_col = st.columns([0.61, 0.39])
+            with title_text_col[0]:
+                st.markdown(f"### Results for {quick_stats['game_name']}:")
+
+            centering_col = st.columns([0.62, 0.38])  # st.columns([0.15, 0.70, 0.15])
+            with centering_col[0]:
+                st.image(f"https://steamcdn-a.akamaihd.net/steam/apps/{quick_stats['app_id']}/header.jpg",
+                         use_column_width=True)
+
+            with centering_col[1]:
+                # QUERY YOUTUBE FOR A GAMEPLAY VIDEO OF THE GAME
+                link = get_gameplay_video(quick_stats['game_name'], GOOGLE_API_TOKEN)
+
+                # DISPLAY THE VIDEO
+                st.video(link)
+                center_subtitle_col = st.columns([0.25, 0.5, 0.1])
+                with center_subtitle_col[1]:
+                    st.markdown(f"##### '{quick_stats['game_name']} gameplay' from youtube")
+            st.divider()
+
+            pie_chart_cols = st.columns([0.3, 0.35, 0.35])
+            with pie_chart_cols[0]:
                 st.header(f"Quick stats for {quick_stats['game_name']}")
                 st.markdown(f"Overall score: :blue[**{quick_stats['reviewScoreDesc']}**]")
                 st.markdown(f"Total reviews: :blue[ **{quick_stats['totalReviews']}**]")
@@ -388,9 +461,9 @@ if button_clicked:
                 st.markdown(
                     'Average Negative Review playtime: :blue[**{:.2f} hours**]'.format(
                         quick_stats['averageNegativeTotalPlaytime']))
-            with col2:
+            with pie_chart_cols[1]:
                 st.plotly_chart(pie1, use_container_width=True)
-            with col3:
+            with pie_chart_cols[2]:
                 st.plotly_chart(pie2, use_container_width=True)
 
         # SURVIVAL ANALYSIS SECTION
@@ -423,9 +496,9 @@ if button_clicked:
                 difference_in_medians = quick_stats['medianPositivePlaytime'] - quick_stats['medianNegativePlaytime']
 
                 if difference_in_medians >= 0:
-                    median_analysis_text += ", and the median is skewed :green[positive]."
+                    median_analysis_text += ", and the playtime at review is skewed :green[positive]."
                 else:
-                    median_analysis_text += ", and the median is skewed :red[negative]."
+                    median_analysis_text += ", and the playtime at review is skewed :red[negative]."
 
                 st.markdown(f"#### {median_analysis_text}")
                 st.markdown(f"Mann-Whitney r-value: {whitney_r_value:0.2f}")
@@ -540,13 +613,13 @@ if button_clicked:
         with st.container():
             # CREATE A FIGURE TO CONTAIN ALL THE OTHER GRAPHS DATA
             combined_trend_graphs = go.Figure()
+            trend_centering_columns = st.columns([0.1, 0.8, 0.1])
+            with trend_centering_columns[1]:
+                st.subheader(
+                    f"Compare the positive review rates of {quick_stats['game_name']} at different playtimes with other games:")
 
-            st.header("Likelihood of Recommending Game Over Playtime")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("**Example text**")
-            with col2:
-                st.markdown("$$\large \\text{Compare recommendations over playtime to large titles: }$$")
+            compare_columns = st.columns([0.2, 0.6, 0.2])
+            with compare_columns[1]:
                 trend1, trend2, trend3, trend4, trend5, trend6, trend7, trend8, trend9 = st.tabs(
                     [quick_stats['game_name'], "Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky",
                      "Terraria", "NBA 2K24", "Apex Legends", "Combined"])
@@ -610,7 +683,8 @@ if button_clicked:
                     graph_names = ["Elden Ring", "Counter-Strike 2", "Starfield", "No Man's Sky", "Terraria",
                                    "NBA 2K24", "Apex Legends"]
 
-                    for i, graph_data in enumerate([ER_fig, CS2_fig, S_fig, NMS_fig, Terraria_fig, NBA_fig, Apex_fig]):
+                    for i, graph_data in enumerate(
+                            [ER_fig, CS2_fig, S_fig, NMS_fig, Terraria_fig, NBA_fig, Apex_fig]):
                         line_chart_data_to_add = graph_data.data[0]
                         line_chart_data_to_add['showlegend'] = True
                         line_chart_data_to_add['name'] = graph_names[i]
@@ -618,6 +692,9 @@ if button_clicked:
                         combined_trend_graphs.add_trace(line_chart_data_to_add)
 
                     st.plotly_chart(combined_trend_graphs, use_container_width=True)
+
+                    # VIDEO PARSING
+                    # # TODO: YOUTUBE GAMEPLAY VIDEOS
 
         # TOPIC ANALYSIS SECTION
         st.divider()
@@ -648,14 +725,14 @@ if button_clicked:
 
                 # INCREMENT THE COLUMN INDEX
                 expander_column_index += 1
+        st.toast("Topic analysis with Zephyr has finished")
 
         # NETWORK GRAPH SECTION
         st.divider()
         st.header("User similarity analysis")
-        st.markdown("**explanation goes here**")
+        st.markdown("**Displays connectivity between the top 7 games in reviewer's libraries**")
         st.markdown(f":red[Excluded {quick_stats['private_profiles']} private profiles from data]")
         tab1, tab2, tab3 = st.tabs(["All", "Positive", "Negative"])
-        # TODO EACH GAME AS A PERCENT OF THE TOP GAMES OF PLAYERS
         with tab1:
             st.header("Most Played Games by Reviewers")
             st.plotly_chart(all_networks[0], use_container_width=True)
@@ -669,12 +746,14 @@ if button_clicked:
             st.plotly_chart(all_networks[2], use_container_width=True)
             st.plotly_chart(all_percentages[2], use_container_width=True)
     except Exception as e:
-        st.warning('Something went wrong, please try again', icon="⚠️")
+        st.error('Error: Please double check game spelling and try again', icon="🚨️")
         loading_placeholder.empty()
         print(traceback.print_exc())
 
 # # EXAMPLE COMPONENTS
 # st.warning('This is a warning', icon="⚠️")
 
-
-# MOST PAIRWISE CONNECTIONS AND THEN RECOMMEND GAMES BASED ON THAT
+# TODO: MOST PAIRWISE CONNECTIONS AND THEN RECOMMEND GAMES BASED ON THAT
+# TODO: COLLABORATIVE FILTERING
+# TODO: RAY PYTHON
+# https://docs.ray.io/en/latest/ray-core/walkthrough.html

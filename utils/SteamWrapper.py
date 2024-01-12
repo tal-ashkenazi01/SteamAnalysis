@@ -84,7 +84,9 @@ def get_Reviews(appid=1091500, reviewType="all", reviewNum=300):
             reviewAuthor = review["author"]
             reviewAuthorSteamID = reviewAuthor["steamid"]
             reviewPlaytimeForever = reviewAuthor["playtime_forever"]
-            reviewPlaytimeAtReview = reviewAuthor["playtime_at_review"]
+            reviewPlaytimeAtReview = 0
+            if 'playtime_at_review' in reviewAuthor.keys():
+                reviewPlaytimeAtReview = reviewAuthor["playtime_at_review"]
             reviewPlaytimeLastTwoWeeks = reviewAuthor["playtime_last_two_weeks"]
             reviewLastPlayed = reviewAuthor["last_played"]
             numberOfReviews = reviewAuthor["num_reviews"]
@@ -98,3 +100,13 @@ def get_Reviews(appid=1091500, reviewType="all", reviewNum=300):
             reviews.append(reviewDict)
 
     return reviews
+
+
+# QUERY YOUTUBE FOR VIDEOS:
+def get_gameplay_video(game_name, key):
+    endpoint = f"https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q={game_name} gameplay&type=video&key={key}&safeSearch=strict"
+    response = requests.get(endpoint)
+
+    video_results = response.json()
+    video_id = video_results['items'][0]['id']['videoId']
+    return f"https://www.youtube.com/watch?v={video_id}"

@@ -21,10 +21,6 @@ def clean_text(text):
     # REMOVE STOPWORDS
     text = ' '.join([word for word in nltk.word_tokenize(text) if word.lower() not in stop_words])
 
-    if "ve" in text:
-        print("Found 've': ")
-        print(text)
-
     return text
 
 
@@ -61,13 +57,6 @@ def generate_topics(top_words, key):
         array_extracted_text = extracted_text.split(',')
         if len(extracted_text) > 3:
             array_extracted_text = array_extracted_text[:3]
-
-        # print("Input text: ")
-        # print(top_words)
-        # print("Returned text: ")
-        # print(content[0]['generated_text'])
-        # print("Extracted text: ")
-        # print(extracted_text)
 
         return array_extracted_text
     except Exception as e:
