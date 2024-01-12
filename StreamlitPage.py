@@ -693,9 +693,6 @@ if button_clicked or random_game:
 
                     st.plotly_chart(combined_trend_graphs, use_container_width=True)
 
-                    # VIDEO PARSING
-                    # # TODO: YOUTUBE GAMEPLAY VIDEOS
-
         # TOPIC ANALYSIS SECTION
         st.divider()
         with st.container():
