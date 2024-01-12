@@ -613,10 +613,8 @@ if button_clicked or random_game:
         with st.container():
             # CREATE A FIGURE TO CONTAIN ALL THE OTHER GRAPHS DATA
             combined_trend_graphs = go.Figure()
-            trend_centering_columns = st.columns([0.1, 0.8, 0.1])
-            with trend_centering_columns[1]:
-                st.subheader(
-                    f"Compare the positive review rates of {quick_stats['game_name']} at different playtimes with other games:")
+            st.subheader(
+                f"Compare the positive review rates of {quick_stats['game_name']} at different playtimes with other games:")
 
             compare_columns = st.columns([0.2, 0.6, 0.2])
             with compare_columns[1]:
