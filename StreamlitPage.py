@@ -697,7 +697,7 @@ if button_clicked or random_game:
             st.header("Topic analysis")
             st.plotly_chart(topics, use_container_width=True)
             st.markdown("#### [Zephyr](https://huggingface.co/HuggingFaceH4/zephyr-7b-beta) generated topics:")
-            st.markdown("Zephyr is part of the Hugging Face family of models")
+            st.markdown("Zephyr is part of the Hugging Face family of models and is a specialized version of the Mystral LLM. The topics generated above are fed to Zephyr to create a unifying category for the words in the topic. Note that accuracy of these topics is not guaranteed, and is highly dependent on the number of input reviews")
             expander_columns = st.columns(5)
 
             with st.spinner("Using hugging face to generate topics... :hugging_face:"):
