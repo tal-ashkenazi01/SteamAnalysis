@@ -390,7 +390,7 @@ with st.container():
         number_input_placeholder = st.empty()
         num_reviews = number_input_placeholder.number_input('$$\Large \\text{Select Number of Reviews: }$$',
                                                             min_value=50, format="%d",
-                                                            step=1, value=200,
+                                                            step=1, value=50,
                                                             help="Going above 5000 reviews not recommended and will lead to long wait times")
     button_centering_col = st.columns([0.25, 0.25, 0.25, 0.25])
     with button_centering_col[1]:
