@@ -691,13 +691,33 @@ if button_clicked or random_game:
 
                     st.plotly_chart(combined_trend_graphs, use_container_width=True)
 
+        # NETWORK GRAPH SECTION
+        st.divider()
+        st.header("User similarity analysis")
+        st.markdown("**Displays connectivity between the top 7 games in reviewer's libraries**")
+        st.markdown(f":red[Excluded {quick_stats['private_profiles']} private profiles from data]")
+        tab1, tab2, tab3 = st.tabs(["All", "Positive", "Negative"])
+        with tab1:
+            st.header("Most Played Games by Reviewers")
+            st.plotly_chart(all_networks[0], use_container_width=True)
+            st.plotly_chart(all_percentages[0], use_container_width=True)
+        with tab2:
+            st.header("Most Played Games by Fans")
+            st.plotly_chart(all_networks[1], use_container_width=True)
+            st.plotly_chart(all_percentages[1], use_container_width=True)
+        with tab3:
+            st.header("Most Played Games by Critics")
+            st.plotly_chart(all_networks[2], use_container_width=True)
+            st.plotly_chart(all_percentages[2], use_container_width=True)
+
         # TOPIC ANALYSIS SECTION
         st.divider()
         with st.container():
             st.header("Topic analysis")
             st.plotly_chart(topics, use_container_width=True)
             st.markdown("#### [Zephyr](https://huggingface.co/HuggingFaceH4/zephyr-7b-beta) generated topics:")
-            st.markdown("Zephyr is part of the Hugging Face family of models and is a specialized version of the Mystral LLM. The topics generated above are fed to Zephyr to create a unifying category for the words in the topic. Note that accuracy of these topics is not guaranteed, and is highly dependent on the number of input reviews")
+            st.markdown(
+                "Zephyr is part of the Hugging Face family of models and is a specialized version of the Mystral LLM. The topics generated above are fed to Zephyr to create a unifying category for the words in the topic. Note that accuracy of these topics is not guaranteed, and is highly dependent on the number of input reviews")
             expander_columns = st.columns(5)
 
             with st.spinner("Using hugging face to generate topics... :hugging_face:"):
@@ -721,25 +741,6 @@ if button_clicked or random_game:
                 # INCREMENT THE COLUMN INDEX
                 expander_column_index += 1
         st.toast("Topic analysis with Zephyr has finished")
-
-        # NETWORK GRAPH SECTION
-        st.divider()
-        st.header("User similarity analysis")
-        st.markdown("**Displays connectivity between the top 7 games in reviewer's libraries**")
-        st.markdown(f":red[Excluded {quick_stats['private_profiles']} private profiles from data]")
-        tab1, tab2, tab3 = st.tabs(["All", "Positive", "Negative"])
-        with tab1:
-            st.header("Most Played Games by Reviewers")
-            st.plotly_chart(all_networks[0], use_container_width=True)
-            st.plotly_chart(all_percentages[0], use_container_width=True)
-        with tab2:
-            st.header("Most Played Games by Fans")
-            st.plotly_chart(all_networks[1], use_container_width=True)
-            st.plotly_chart(all_percentages[1], use_container_width=True)
-        with tab3:
-            st.header("Most Played Games by Critics")
-            st.plotly_chart(all_networks[2], use_container_width=True)
-            st.plotly_chart(all_percentages[2], use_container_width=True)
     except Exception as e:
         st.error('Error: Please double check game spelling and try again', icon="🚨️")
         loading_placeholder.empty()
