@@ -108,5 +108,9 @@ def get_gameplay_video(game_name, key):
     response = requests.get(endpoint)
 
     video_results = response.json()
-    video_id = video_results['items'][0]['id']['videoId']
+    print(video_results)
+    try:
+        video_id = video_results['items'][0]['id']['videoId']
+    except Exception as e:
+        raise "Error with the youtube video"
     return f"https://www.youtube.com/watch?v={video_id}"

@@ -439,13 +439,17 @@ if button_clicked or random_game or first_run:
 
             with centering_col[1]:
                 # QUERY YOUTUBE FOR A GAMEPLAY VIDEO OF THE GAME
-                link = get_gameplay_video(quick_stats['game_name'], GOOGLE_API_TOKEN)
-
-                # DISPLAY THE VIDEO
-                st.video(link)
-                center_subtitle_col = st.columns([0.25, 0.5, 0.1])
-                with center_subtitle_col[1]:
-                    st.markdown(f"##### '{quick_stats['game_name']} gameplay' from youtube")
+                try:
+                    link = get_gameplay_video(quick_stats['game_name'], GOOGLE_API_TOKEN)
+                    # DISPLAY THE VIDEO
+                    st.video(link)
+                    center_subtitle_col = st.columns([0.25, 0.5, 0.1])
+                    with center_subtitle_col[1]:
+                        st.markdown(f"##### '{quick_stats['game_name']} gameplay' from youtube")
+                except Exception as e:
+                    st.error('Error: Something went wrong with the Youtube API. Using placeholder video', icon="🚨️")
+                    link = r"https://www.youtube.com/watch?v=sQfk5HykiEk"
+                    st.video(link)
             st.divider()
 
             pie_chart_cols = st.columns([0.3, 0.35, 0.35])
