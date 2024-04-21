@@ -40,7 +40,7 @@ load_dotenv()
 steam_key = os.getenv('STEAM_KEY')
 GOOGLE_API_TOKEN = os.getenv('GOOGLE_API_KEY')
 HUGGING_API_TOKEN = os.getenv('HUGGING_API_KEY')
-first_run = True
+first_run = 0
 
 # SET UP THE PICKLE FILE FOR FUTURE READING
 if not os.path.exists("game_id.pkl"):
@@ -403,19 +403,18 @@ with st.container():
     data_info = st.empty()
 
 # Callback for button click
-if button_clicked or random_game or first_run:
+if button_clicked or random_game:
     captured_user_input = user_input
     if num_reviews < 100:
         alert_placeholder.warning(
             "Warning: Running analysis with less than 100 reviews will lead to low quality results", icon="⚠️")
 
-    if random_game or first_run:
+    if random_game:
         captured_user_input = random.choice(
             ["Inscryption", "NBA 2K23", "Slay the Spire", "Tom Clancy's Rainbow Six Siege", "PUBG: Battlegrounds",
              "Sid Meier’s Civilization vi", "Baldur's Gate 3", "Counter-Strike 2", "EA SPORTS FC 24"])
         text_input_placeholder.text_input("$$\Large \\text{Enter the name of the steam game: }$$",
                                           value=captured_user_input)
-        first_run = False
 
     # LOADING SCREEN TO INTERACT WITH USER DURING LOADING
     loading_placeholder = st.progress(0, text=None)
