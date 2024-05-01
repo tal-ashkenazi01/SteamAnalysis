@@ -108,7 +108,7 @@ def get_gameplay_video(game_name, key):
     response = requests.get(endpoint)
 
     video_results = response.json()
-    print(video_results)
+    # print(video_results)
     try:
         video_id = video_results['items'][0]['id']['videoId']
     except Exception as e:

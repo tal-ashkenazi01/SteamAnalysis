@@ -40,7 +40,6 @@ load_dotenv()
 steam_key = os.getenv('STEAM_KEY')
 GOOGLE_API_TOKEN = os.getenv('GOOGLE_API_KEY')
 HUGGING_API_TOKEN = os.getenv('HUGGING_API_KEY')
-first_run = 0
 
 # SET UP THE PICKLE FILE FOR FUTURE READING
 if not os.path.exists("game_id.pkl"):
@@ -375,18 +374,26 @@ def create_plots(input_game_name, num_reviews):
 # Streamlit app layout and components
 # LAYOUT
 st.set_page_config(page_title="Steam Sense", page_icon='./assets/SteamSense128.ico', layout='wide')
-
 # COMPONENTS
 # HEADER AND TITLE
 alert_placeholder = st.empty()
 st.title("Steam Sense: Steam Review Analytics")
 st.markdown("By Tal Ashkenazi - [Github](https://github.com/tal-ashkenazi01)")
+
+if "current_game" not in st.session_state:
+    st.session_state["current_game"] = random.choice(
+        ["Inscryption", "NBA 2K23", "Slay the Spire", "Tom Clancy's Rainbow Six Siege", "PUBG: Battlegrounds",
+         "Sid Meier’s Civilization vi", "Baldur's Gate 3", "Counter-Strike 2", "EA SPORTS FC 24"])
+
+if "first_run" not in st.session_state:
+    st.session_state["first_run"] = True
+
 with st.container():
     col1, col2 = st.columns([0.7, 0.3])
     with col1:
         text_input_placeholder = st.empty()
         user_input = text_input_placeholder.text_input("$$\Large \\text{Enter the name of the steam game: }$$",
-                                                       value="Lunacid")
+                                                       value=f"{st.session_state.current_game}")
     with col2:
         number_input_placeholder = st.empty()
         num_reviews = number_input_placeholder.number_input('$$\Large \\text{Select Number of Reviews: }$$',
@@ -403,18 +410,26 @@ with st.container():
     data_info = st.empty()
 
 # Callback for button click
-if button_clicked or random_game:
+if button_clicked or random_game or st.session_state.first_run:
+    page_first_run = False
+    if st.session_state.first_run:
+        page_first_run = True
+        st.session_state.first_run = False
+
+    st.session_state.current_game = user_input
     captured_user_input = user_input
+    print(captured_user_input)
     if num_reviews < 100:
         alert_placeholder.warning(
             "Warning: Running analysis with less than 100 reviews will lead to low quality results", icon="⚠️")
 
-    if random_game:
+    if random_game or page_first_run:
         captured_user_input = random.choice(
             ["Inscryption", "NBA 2K23", "Slay the Spire", "Tom Clancy's Rainbow Six Siege", "PUBG: Battlegrounds",
              "Sid Meier’s Civilization vi", "Baldur's Gate 3", "Counter-Strike 2", "EA SPORTS FC 24"])
+        st.session_state.current_game = captured_user_input
         text_input_placeholder.text_input("$$\Large \\text{Enter the name of the steam game: }$$",
-                                          value=captured_user_input)
+                                          value=f"{st.session_state.current_game}")
 
     # LOADING SCREEN TO INTERACT WITH USER DURING LOADING
     loading_placeholder = st.progress(0, text=None)
